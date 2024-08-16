@@ -1,9 +1,7 @@
-// routes/auth.js
-
 const express = require("express");
-const User = require("../models/User"); // Corrected path
+const User = require("../models/User"); // Correct path to the User model
 const bcrypt = require("bcryptjs"); // For password hashing
-// const jwt = require("jsonwebtoken"); // Uncomment if you're using JWT
+// const jwt = require("jsonwebtoken"); // Uncomment if using JWT
 
 const router = express.Router();
 
@@ -16,7 +14,6 @@ router.post("/register", async (req, res) => {
     if (user) {
       return res.status(400).json({ message: "Username already exists" });
     }
-
     // Hash the password before saving
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -41,7 +38,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Compare the password with the hashed password in the database
+    // Compare the plaintext password with the hashed password in the database
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
