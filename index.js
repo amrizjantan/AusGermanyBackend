@@ -4,6 +4,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors"); // Import CORS middleware
 const authRoutes = require("./routes/auth"); // Correct path to auth routes
+const urlRoutes = require("./routes/urls"); // Import the URL routes
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -33,9 +34,11 @@ mongoose
 app.use(express.json());
 // Route setup
 app.use("/api", authRoutes); // Prefix the route if needed
+app.use("/api/urls", urlRoutes); // Adjust route prefix as needed
 
-app.get("/", (req, res) => {
-  res.send("Backend is running");
+app.use((req, res, next) => {
+  console.log(`Received ${req.method} request to ${req.url}`);
+  next();
 });
 
 app.listen(PORT, () => {
