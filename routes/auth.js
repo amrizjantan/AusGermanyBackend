@@ -4,7 +4,8 @@ const router = express.Router();
 
 // Register a new user
 router.post("/register", async (req, res) => {
-  const { username, password } = req.body;
+  const { username, email, password } = req.body;
+  console.log("Register request body:", req.body);
 
   try {
     let user = await User.findOne({ username });
@@ -12,13 +13,15 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Username already exists" });
     }
 
-    // Hash the password and save the user
-    user = new User({ username, password });
+    user = new User({ username, email, password });
+    console.log("User object before saving:", user);
+
     await user.save();
+    console.log("User saved successfully:", user);
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
-    console.error(err.message);
+    console.error("Register error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 });

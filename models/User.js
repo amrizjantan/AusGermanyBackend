@@ -8,11 +8,18 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     minlength: 3,
   },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    match: [/.+\@.+\..+/, "Please fill a valid email address"], // Simple email validation
+  },
   password: {
     type: String,
     required: true,
     minlength: 6,
   },
+  urls: [String], // Optional field for storing URLs
 });
 
 // Hash the password before saving the user
