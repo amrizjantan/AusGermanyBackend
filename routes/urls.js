@@ -5,7 +5,7 @@ const User = require("../models/User");
 // Endpoint to save a URL
 router.post("/save-url", async (req, res) => {
   const { url } = req.body;
-  const userId = "66c0ae8793f4ecceefeb6371"; // JUST FOR
+  const userId = "66c0c721bf2862ed92a575d8"; // JUST FOR Testing => chippi2
 
   if (!url) {
     return res.status(400).json({ message: "URL is required" });
