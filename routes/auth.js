@@ -1,6 +1,7 @@
 const express = require("express");
 const User = require("../models/User");
 const router = express.Router();
+const jwt = require("jsonwebtoken");
 
 // Register a new user
 router.post("/register", async (req, res) => {
@@ -19,7 +20,12 @@ router.post("/register", async (req, res) => {
     await user.save();
     console.log("User saved successfully:", user);
 
-    res.status(201).json({ message: "User registered successfully" });
+    // Generate a JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.status(201).json({ message: "User registered successfully", token });
   } catch (err) {
     console.error("Register error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -42,17 +48,18 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // If using JWT, generate a token here
-    // const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Generate a JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
-    res
-      .status(200)
-      .json({
-        username: user.username,
-        message: "Logged in successfully" /* , token */,
-      });
+    res.status(200).json({
+      username: user.username,
+      message: "Logged in successfully",
+      token,
+    });
   } catch (err) {
-    console.error(err.message);
+    console.error("Login error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 });
