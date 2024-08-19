@@ -2,14 +2,14 @@ require("dotenv").config(); // Load environment variables from .env
 
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors"); // Import CORS middleware
-const authRoutes = require("./routes/auth"); // Correct path to auth routes
-const urlRoutes = require("./routes/urls"); // Import the URL routes
+const cors = require("cors");
+const authRoutes = require("./routes/auth"); // Authentication routes
+const urlRoutes = require("./routes/urls"); // URL saving routes
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-console.log("MongoDB URI from environment:", process.env.MONGO_URI); // Debugging output
+console.log("MongoDB URI from environment:", process.env.MONGO_URI);
 
 const corsOptions = {
   origin: "http://localhost:5173", // Replace with your frontend URL if different
@@ -18,6 +18,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions)); // Use CORS middleware with options
+app.use(express.json()); // Middleware to parse JSON
 
 mongoose
   .connect(process.env.MONGO_URI, {
@@ -31,14 +32,13 @@ mongoose
     console.error("MongoDB connection error:", err.message);
   });
 
-app.use(express.json());
 // Route setup
-app.use("/api", authRoutes); // Prefix the route if needed
-app.use("/api/urls", urlRoutes); // Adjust route prefix as needed
+app.use("/api", authRoutes); // Authentication routes
+app.use("/api/urls", urlRoutes); // URL routes
 
+// Fallback route for undefined routes
 app.use((req, res, next) => {
-  console.log(`Received ${req.method} request to ${req.url}`);
-  next();
+  res.status(404).json({ message: "Route not found" });
 });
 
 app.listen(PORT, () => {
