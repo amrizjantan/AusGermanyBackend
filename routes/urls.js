@@ -6,15 +6,17 @@ const { check, validationResult } = require("express-validator");
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
-  // Log the token for debugging
-  console.log("Extracted token:", token);
-  // Extract token from headers
-  const token = req.header("Authorization").replace("Bearer ", "");
-  // Log the token for debugging
-  console.log("Extracted token:", token);
+  // Correctly extract the token from the Authorization header
+  const authHeader = req.header("Authorization");
+  if (!authHeader) {
+    return res
+      .status(401)
+      .json({ message: "Access Denied. No token provided." });
+  }
+
+  const token = authHeader.replace("Bearer ", ""); // Remove 'Bearer ' prefix from the token
 
   if (!token) {
-    console.log("No token provided");
     return res
       .status(401)
       .json({ message: "Access Denied. No token provided." });
@@ -22,11 +24,9 @@ const authenticateToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Token decoded:", decoded);
-    req.user = decoded; // Assuming JWT payload contains user data
+    req.user = decoded; // Attach decoded token payload to req.user
     next();
   } catch (error) {
-    console.log("Error decoding token:", error.message);
     res.status(400).json({ message: "Invalid token." });
   }
 };
@@ -49,7 +49,6 @@ router.post(
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-
       if (!user.urls.includes(url)) {
         user.urls.push(url);
         await user.save();
