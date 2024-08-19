@@ -62,5 +62,19 @@ router.post(
     }
   }
 );
+// Endpoint to get all URLs for the authenticated user
+router.get("/urls", authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId); // Extract userId from the decoded JWT
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ urls: user.urls });
+  } catch (error) {
+    console.error("Error fetching URLs:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 
 module.exports = router;
