@@ -63,7 +63,7 @@ router.post(
 );
 
 // Endpoint to get all URLs for the authenticated user
-router.get("/", authenticateToken, async (req, res) => {
+router.get("/get-url", authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId); // Extract userId from JWT
     if (!user) {
