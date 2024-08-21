@@ -6,7 +6,6 @@ const { check, validationResult } = require("express-validator");
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
-  // Correctly extract the token from the Authorization header
   const authHeader = req.header("Authorization");
   if (!authHeader) {
     return res
@@ -14,7 +13,7 @@ const authenticateToken = (req, res, next) => {
       .json({ message: "Access Denied. No token provided." });
   }
 
-  const token = authHeader.replace("Bearer ", ""); // Remove 'Bearer ' prefix from the token
+  const token = authHeader.replace("Bearer ", ""); // Remove 'Bearer ' prefix
 
   if (!token) {
     return res
@@ -45,7 +44,7 @@ router.post(
     const { url } = req.body;
 
     try {
-      const user = await User.findById(req.user.userId); // Extract userId from the decoded JWT
+      const user = await User.findById(req.user.userId); // Extract userId from JWT
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -62,10 +61,11 @@ router.post(
     }
   }
 );
+
 // Endpoint to get all URLs for the authenticated user
-router.get("/urls", authenticateToken, async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId); // Extract userId from the decoded JWT
+    const user = await User.findById(req.user.userId); // Extract userId from JWT
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
