@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const { check, validationResult } = require("express-validator");
+const { scrapeUrl } = require("../utils/scraper"); // Importing the scraper
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
@@ -61,6 +62,32 @@ router.post(
     }
   }
 );
+
+//To delete below if broken until from line 90 to line 114
+//     const { url } = req.body;
+
+//     try {
+//       const user = await User.findById(req.user.userId);
+//       if (!user) {
+//         return res.status(404).json({ message: "User not found" });
+//       }
+
+//       // Use the scraper to get data from the URL
+//       const { title, price, imageUrl } = await scrapeUrl(url);
+
+//       if (!user.urls.some((item) => item.url === url)) {
+//         user.urls.push({ url, title, price, imageUrl });
+//         await user.save();
+//         res.status(200).json({ message: "URL saved successfully" });
+//       } else {
+//         res.status(400).json({ message: "URL already exists" });
+//       }
+//     } catch (error) {
+//       console.error("Error saving URL:", error);
+//       res.status(500).json({ message: "Server error", error });
+//     }
+//   }
+// );
 
 // Endpoint to get all URLs for the authenticated user
 router.get("/get-url", authenticateToken, async (req, res) => {
