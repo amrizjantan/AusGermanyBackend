@@ -42,15 +42,41 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
+    //     const { url } = req.body;
+
+    //     try {
+    //       const user = await User.findById(req.user.userId); // Extract userId from JWT
+    //       if (!user) {
+    //         return res.status(404).json({ message: "User not found" });
+    //       }
+    //       if (!user.urls.includes(url)) {
+    //         user.urls.push(url);
+    //         await user.save();
+    //         res.status(200).json({ message: "URL saved successfully" });
+    //       } else {
+    //         res.status(400).json({ message: "URL already exists" });
+    //       }
+    //     } catch (error) {
+    //       console.error("Error saving URL:", error);
+    //       res.status(500).json({ message: "Server error", error });
+    //     }
+    //   }
+    // );
+
+    //If using scrapper, however doesnt work !!?
     const { url } = req.body;
 
     try {
-      const user = await User.findById(req.user.userId); // Extract userId from JWT
+      const user = await User.findById(req.user.userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      if (!user.urls.includes(url)) {
-        user.urls.push(url);
+
+      // Use the scraper to get data from the URL
+      const { title, price, imageUrl } = await scrapeUrl(url);
+
+      if (!user.urls.some((item) => item.url === url)) {
+        user.urls.push({ url, title, price, imageUrl });
         await user.save();
         res.status(200).json({ message: "URL saved successfully" });
       } else {
@@ -62,32 +88,6 @@ router.post(
     }
   }
 );
-
-//To delete below if broken until from line 90 to line 114
-//     const { url } = req.body;
-
-//     try {
-//       const user = await User.findById(req.user.userId);
-//       if (!user) {
-//         return res.status(404).json({ message: "User not found" });
-//       }
-
-//       // Use the scraper to get data from the URL
-//       const { title, price, imageUrl } = await scrapeUrl(url);
-
-//       if (!user.urls.some((item) => item.url === url)) {
-//         user.urls.push({ url, title, price, imageUrl });
-//         await user.save();
-//         res.status(200).json({ message: "URL saved successfully" });
-//       } else {
-//         res.status(400).json({ message: "URL already exists" });
-//       }
-//     } catch (error) {
-//       console.error("Error saving URL:", error);
-//       res.status(500).json({ message: "Server error", error });
-//     }
-//   }
-// );
 
 // Endpoint to get all URLs for the authenticated user
 router.get("/get-url", authenticateToken, async (req, res) => {
