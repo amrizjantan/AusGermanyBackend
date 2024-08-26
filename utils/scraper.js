@@ -12,10 +12,10 @@ const scrapeUrl = async (url) => {
     });
 
     const data = await page.evaluate(() => {
-      // Selectors for the elements to scrape
+      // Replace these selectors with the actual CSS selectors for the elements you want to scrape
       const title = document.querySelector(".product-title")?.innerText || "";
-      const price = document.querySelector("#itemPrice")?.innerText || "";
-      const imageUrl = document.querySelector("#product-image")?.src || "";
+      const price = document.querySelector(".product-price")?.innerText || "";
+      const imageUrl = document.querySelector(".product-image")?.src || "";
       return { title, price, imageUrl };
     });
 
