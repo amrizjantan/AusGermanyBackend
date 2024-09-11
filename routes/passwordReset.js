@@ -29,18 +29,23 @@ router.post("/forgot-password", async (req, res) => {
       },
     });
 
-    const resetUrl = `${req.protocol}://${req.get(
-      "host"
-    )}/api/password-reset/reset-password/${resetToken}`;
+    // Inside your /forgot-password route
+
+    const resetUrl = `${req.protocol}://${req
+      .get("host")
+      .replace(":5001", ":5173")}/resetpassword/${resetToken}`;
 
     await transporter.sendMail({
       to: user.email,
       from: process.env.EMAIL_USER,
       subject: "Password Reset Request",
-      text: `You are receiving this because you have requested to reset the password for your account.\n\n
-             Please click on the following link, or paste it into your browser to complete the process:\n\n
-             ${resetUrl}\n\n
-             If you did not request this, please ignore this email and your password will remain unchanged.`,
+      html: `
+        <p>You are receiving this email because you (or someone else) have requested to reset the password for your account.</p>
+        <p>Please click on the following link, or paste it into your browser to complete the process:</p>
+        <p><a href="${resetUrl}" target="_blank">${resetUrl}</a></p>
+        <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
+        <p>Best regards,<br>Your Company</p>
+      `,
     });
 
     res.status(200).json({ message: "Password reset email sent" });
