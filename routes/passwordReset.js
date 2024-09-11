@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require("../models/User");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const bcrypt = require("bcryptjs"); // Add bcrypt to hash the new password
 
 // Request a password reset
 router.post("/forgot-password", async (req, res) => {
@@ -21,7 +22,7 @@ router.post("/forgot-password", async (req, res) => {
     await user.save();
 
     const transporter = nodemailer.createTransport({
-      service: "Gmail",
+      service: "Zoho",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -30,11 +31,11 @@ router.post("/forgot-password", async (req, res) => {
 
     const resetUrl = `${req.protocol}://${req.get(
       "host"
-    )}/reset-password/${resetToken}`;
+    )}/api/reset-password/${resetToken}`; // Ensure to use the correct path for your API
 
     await transporter.sendMail({
       to: user.email,
-      from: "no-reply@yourapp.com",
+      from: process.env.EMAIL_USER,
       subject: "Password Reset Request",
       text: `You are receiving this because you (or someone else) have requested to reset the password for your account.\n\n
              Please click on the following link, or paste it into your browser to complete the process:\n\n
@@ -66,7 +67,11 @@ router.post("/reset-password/:token", async (req, res) => {
         .json({ message: "Password reset token is invalid or has expired" });
     }
 
-    user.password = password; // Ensure you hash the password before saving
+    // Hash the new password before saving
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    // Clear the reset token and expiry
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 

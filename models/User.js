@@ -19,6 +19,8 @@ const UserSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
+  resetpasswordtoken: String,
+  resetPasswordExpires: Date,
   urls: [
     {
       // Define urls as an array of objects
