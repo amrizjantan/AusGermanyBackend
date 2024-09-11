@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const authRoutes = require("./routes/auth"); // Authentication routes
 const urlRoutes = require("./routes/urls"); // URL saving routes
+const passwordResetRoutes = require("./routes/passwordReset"); // Password reset routes
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -35,6 +36,7 @@ mongoose
 // Route setup
 app.use("/api", authRoutes); // Authentication routes
 app.use("/api/urls", urlRoutes); // URL routes
+app.use("/api/password-reset", passwordResetRoutes); // Password reset routes
 
 // Fallback route for undefined routes
 app.use((req, res, next) => {

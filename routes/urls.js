@@ -42,28 +42,6 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    //     const { url } = req.body;
-
-    //     try {
-    //       const user = await User.findById(req.user.userId); // Extract userId from JWT
-    //       if (!user) {
-    //         return res.status(404).json({ message: "User not found" });
-    //       }
-    //       if (!user.urls.includes(url)) {
-    //         user.urls.push(url);
-    //         await user.save();
-    //         res.status(200).json({ message: "URL saved successfully" });
-    //       } else {
-    //         res.status(400).json({ message: "URL already exists" });
-    //       }
-    //     } catch (error) {
-    //       console.error("Error saving URL:", error);
-    //       res.status(500).json({ message: "Server error", error });
-    //     }
-    //   }
-    // );
-
-    //If using scrapper, however doesnt work !!?
     const { url } = req.body;
 
     try {
