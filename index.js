@@ -34,7 +34,7 @@ mongoose
   });
 
 // Route setup
-app.use("/api/auth", authRoutes); // Authentication routes
+app.use("/api", authRoutes); // Authentication routes
 app.use("/api/urls", urlRoutes); // URL routes
 app.use("/api/password-reset", passwordResetRoutes); // Password reset routes
 
