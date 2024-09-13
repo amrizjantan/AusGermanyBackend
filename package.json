@@ -4,6 +4,7 @@
   "description": "Backend service for the AusGermany project",
   "main": "index.js",
   "scripts": {
+    "dev": "turbowatch ./watcher.js",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -25,5 +26,9 @@
     "nodemailer": "^6.9.15",
     "open-graph-scraper": "^6.8.0",
     "puppeteer": "^23.1.1"
+  },
+  "devDependencies": {
+    "@roarr/cli": "^5.12.4",
+    "turbowatch": "^2.29.4"
   }
 }
