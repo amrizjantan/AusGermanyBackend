@@ -1,12 +1,13 @@
-const express = require("express");
-const User = require("../models/User");
-const router = express.Router();
-const jwt = require("jsonwebtoken");
+import { Router } from "express";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
+
+const router = Router();
 
 // Register a new user
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
-  console.log("Register request body:", req.body);
+  console.log("Register request body:", req.body); // eslint-disable-line no-console
 
   try {
     let user = await User.findOne({ username });
@@ -15,10 +16,10 @@ router.post("/register", async (req, res) => {
     }
 
     user = new User({ username, email, password });
-    console.log("User object before saving:", user);
+    console.log("User object before saving:", user); // eslint-disable-line no-console
 
     await user.save();
-    console.log("User saved successfully:", user);
+    console.log("User saved successfully:", user); // eslint-disable-line no-console
 
     // Generate a JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -63,4 +64,5 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-module.exports = router;
+
+export default router;

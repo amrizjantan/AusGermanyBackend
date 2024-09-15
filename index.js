@@ -1,16 +1,12 @@
-require("dotenv").config(); // Load environment variables from .env
-
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const authRoutes = require("./routes/auth"); // Authentication routes
-const urlRoutes = require("./routes/urls"); // URL saving routes
-const passwordResetRoutes = require("./routes/passwordReset"); // Password reset routes
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import authRoutes from "./routes/auth.js";
+import urlRoutes from "./routes/urls.js";
+import passwordResetRoutes from "./routes/passwordReset.js";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-
-console.log("MongoDB URI from environment:", process.env.MONGO_URI);
 
 const corsOptions = {
   origin: "http://localhost:5173", // Replace with your frontend URL if different
@@ -22,27 +18,24 @@ app.use(cors(corsOptions)); // Use CORS middleware with options
 app.use(express.json()); // Middleware to parse JSON
 
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("MongoDB connected");
+    console.log("MongoDB connected"); // eslint-disable-line no-console
   })
   .catch((err) => {
     console.error("MongoDB connection error:", err.message);
   });
 
 // Route setup
-app.use("/api", authRoutes); // Authentication routes
-app.use("/api/urls", urlRoutes); // URL routes
-app.use("/api/password-reset", passwordResetRoutes); // Password reset routes
+app.use("/api", authRoutes);
+app.use("/api/urls", urlRoutes);
+app.use("/api/password-reset", passwordResetRoutes);
 
 // Fallback route for undefined routes
-app.use((req, res, next) => {
+app.use((_req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`); // eslint-disable-line no-console
 });

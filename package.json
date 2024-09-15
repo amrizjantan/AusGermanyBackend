@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "description": "Backend service for the AusGermany project",
   "main": "index.js",
+  "type": "module",
+  "engines": {
+    "npm": ">=10.8.1",
+    "node": ">=20.16.0"
+  },
   "scripts": {
-    "dev": "turbowatch ./watcher.js",
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "preinstall": "node check-version.js",
+    "dev": "node check-version.js && turbowatch ./watcher.js",
+    "start": "node check-version.js && node --env-file=.env index.js",
+    "check-version": "node check-version.js verbose"
   },
   "keywords": [
     "backend",
@@ -16,9 +22,7 @@
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-validator": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
@@ -28,7 +32,8 @@
     "puppeteer": "^23.1.1"
   },
   "devDependencies": {
-    "@roarr/cli": "^5.12.4",
+    "eslint": "^9.10.0",
+    "prettier": "^3.3.3",
     "turbowatch": "^2.29.4"
   }
 }

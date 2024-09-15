@@ -1,14 +1,14 @@
-const puppeteer = require("puppeteer");
+import puppeteer from "puppeteer";
 
-const scrapeUrl = async (url) => {
+export const scrapeUrl = async (url) => {
   try {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle2" });
 
-    // Wait for the page to finish loading
     await page.waitForFunction(() => {
-      return document.readyState === "complete";
+      // Wait for the page to finish loading
+      return page.document.readyState === "complete";
     });
 
     const data = await page.evaluate(() => {
@@ -26,5 +26,3 @@ const scrapeUrl = async (url) => {
     throw error;
   }
 };
-
-module.exports = { scrapeUrl };

@@ -1,5 +1,4 @@
-const nodemailer = require("nodemailer");
-require("dotenv").config(); // Ensure this line is included if using environment variables from .env file
+import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.com",
@@ -25,6 +24,6 @@ transporter.sendMail(mailOptions, (err, info) => {
       console.error("SMTP Response:", err.response);
     }
   } else {
-    console.log("Email sent:", info.response);
+    console.log("Email sent:", info.response); // eslint-disable-line no-console
   }
 });

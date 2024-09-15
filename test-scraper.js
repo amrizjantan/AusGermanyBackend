@@ -1,4 +1,4 @@
-const { scrapeUrl } = require("./utils/scraper");
+import { scrapeUrl } from "./utils/scraper.js";
 
 const userInput = process.argv[2];
 const userInputUrl = new URL(userInput);
@@ -17,6 +17,6 @@ if (!scrapeAdapter[userInputHost]) {
   throw new Error("Invalid URL.");
 }
 
-console.log(scrapeAdapter[userInputHost]);
+console.log(scrapeAdapter[userInputHost]); // eslint-disable-line no-console
 
 scrapeUrl({ ...scrapeAdapter[userInputHost], url: userInput });

@@ -1,4 +1,4 @@
-const { defineConfig } = require("turbowatch");
+import { defineConfig } from "turbowatch";
 
 export default defineConfig({
   project: __dirname,
@@ -7,7 +7,7 @@ export default defineConfig({
       expression: ["match", "*.js", "basename"],
       name: "build",
       onChange: async ({ spawn }) => {
-        await spawn`node index.js`;
+        await spawn`node --env-file=.env index.js`;
       },
     },
   ],

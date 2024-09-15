@@ -1,8 +1,7 @@
-const nodemailer = require("nodemailer");
-require("dotenv").config(); // Ensure this line is included if using environment variables from .env file
+import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  service: "Zoho", // Ensure the email service matches your provider
+  service: "Zoho",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -20,7 +19,7 @@ transporter.sendMail(
     if (err) {
       console.error("Email send error:", err);
     } else {
-      console.log("Email sent:", info.response);
+      console.log("Email sent:", info.response); // eslint-disable-line no-console
     }
   }
 );

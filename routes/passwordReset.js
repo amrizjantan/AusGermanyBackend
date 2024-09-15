@@ -1,9 +1,10 @@
-const express = require("express");
-const router = express.Router();
-const User = require("../models/User");
-const crypto = require("crypto");
-const nodemailer = require("nodemailer");
-const bcrypt = require("bcryptjs");
+import { Router } from "express";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
+import User from "../models/User.js";
+
+const router = Router();
 
 // Request a password reset
 router.post("/forgot-password", async (req, res) => {
@@ -57,7 +58,7 @@ router.post("/forgot-password", async (req, res) => {
 
 // Reset password
 router.post("/reset-password/:token", async (req, res) => {
-  console.log("Reset password request received");
+  console.log("Reset password request received"); // eslint-disable-line no-console
 
   const { token } = req.params;
   const { password } = req.body;
@@ -91,4 +92,4 @@ router.post("/reset-password/:token", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

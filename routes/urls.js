@@ -1,11 +1,11 @@
-const express = require("express");
-const router = express.Router();
-const User = require("../models/User");
-const jwt = require("jsonwebtoken");
-const { check, validationResult } = require("express-validator");
-const { scrapeUrl } = require("../utils/scraper"); // Importing the scraper
+import { Router } from "express";
+import { check, validationResult } from "express-validator";
+import jwt from "jsonwebtoken";
+import { scrapeUrl } from "../utils/scraper.js";
+import User from "../models/User.js";
 
-// Middleware to verify JWT token
+const router = Router();
+
 const authenticateToken = (req, res, next) => {
   const authHeader = req.header("Authorization");
   if (!authHeader) {
@@ -14,7 +14,7 @@ const authenticateToken = (req, res, next) => {
       .json({ message: "Access Denied. No token provided." });
   }
 
-  const token = authHeader.replace("Bearer ", ""); // Remove 'Bearer ' prefix
+  const token = authHeader.replace("Bearer ", "");
 
   if (!token) {
     return res
@@ -24,14 +24,13 @@ const authenticateToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Attach decoded token payload to req.user
+    req.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     res.status(400).json({ message: "Invalid token." });
   }
 };
 
-// Endpoint to save a URL (requires JWT authentication)
 router.post(
   "/save-url",
   authenticateToken,
@@ -50,7 +49,6 @@ router.post(
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Use the scraper to get data from the URL
       const { title, price, imageUrl } = await scrapeUrl(url);
 
       if (!user.urls.some((item) => item.url === url)) {
@@ -67,8 +65,8 @@ router.post(
   }
 );
 
-// Endpoint to get all URLs for the authenticated user
 router.get("/get-url", authenticateToken, async (req, res) => {
+  // Endpoint to get all URLs for the authenticated user
   try {
     const user = await User.findById(req.user.userId); // Extract userId from JWT
     if (!user) {
@@ -82,4 +80,4 @@ router.get("/get-url", authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
