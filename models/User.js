@@ -19,7 +19,7 @@ const UserSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
-  resetpasswordtoken: String,
+  resetPasswordToken: String,
   resetPasswordExpires: Date,
   urls: [
     {
