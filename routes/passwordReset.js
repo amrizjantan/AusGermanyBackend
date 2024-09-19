@@ -2,25 +2,38 @@ import { Router } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-import User from "../models/User.js";
+import { supabase } from "../index.js";
 
 const router = Router();
 
-// Request a password reset
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
+    const { data, error } = await supabase
+      .from("users")
+      .select()
+      .eq("email", email);
+
+    if (error || !data.length) {
+      console.error(error);
+      return res.status(400).json({ message: "User not found." });
     }
 
-    const resetToken = crypto.randomBytes(20).toString("hex");
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour in milliseconds from now (UTC)
+    const resetPasswordToken = crypto.randomBytes(20).toString("hex");
+    const resetPasswordExpirationTimestamp = Date.now() + 3600000; // 1 hour in milliseconds from now (UTC)
 
-    await user.save();
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        reset_password_token: resetPasswordToken,
+        reset_password_expiration_timestamp: resetPasswordExpirationTimestamp,
+      })
+      .eq("email", email);
+
+    if (updateError) {
+      throw new Error(JSON.stringify(updateError, undefined, 2));
+    }
 
     const transporter = nodemailer.createTransport({
       service: "Zoho",
@@ -30,14 +43,12 @@ router.post("/forgot-password", async (req, res) => {
       },
     });
 
-    // Inside your /forgot-password route
-
     const resetUrl = `${req.protocol}://${req
       .get("host")
-      .replace(":5001", ":5173")}/resetpassword/${resetToken}`;
+      .replace(":5001", ":5173")}/resetpassword/${resetPasswordToken}`;
 
     await transporter.sendMail({
-      to: user.email,
+      to: email,
       from: process.env.EMAIL_USER,
       subject: "Password Reset Request",
       html: `
@@ -56,34 +67,36 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-// Reset password
 router.post("/reset-password/:token", async (req, res) => {
-  console.log("Reset password request received"); // eslint-disable-line no-console
-
   const { token } = req.params;
   const { password } = req.body;
 
   try {
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() }, // Ensure this is UTC
-    });
+    const { data, error } = await supabase
+      .from("users")
+      .select()
+      .eq("reset_password_token", token)
+      .gt("reset_password_expiration_timestamp", Date.now());
 
-    if (!user) {
+    if (error || !data.length) {
+      console.error(error);
       return res
         .status(400)
         .json({ message: "Password reset token is invalid or has expired" });
     }
 
-    // Hash the new password before saving
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        password: await bcrypt.hash(password, 10),
+        reset_password_token: null,
+        reset_password_expiration_timestamp: null,
+      })
+      .eq("email", data[0].email);
 
-    // Clear the reset token and expiry
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-
-    await user.save();
+    if (updateError) {
+      throw new Error(error);
+    }
 
     res.status(200).json({ message: "Password has been reset successfully" });
   } catch (err) {

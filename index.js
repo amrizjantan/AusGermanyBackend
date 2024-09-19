@@ -1,5 +1,5 @@
 import express from "express";
-import mongoose from "mongoose";
+import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
 import urlRoutes from "./routes/urls.js";
@@ -17,14 +17,10 @@ const corsOptions = {
 app.use(cors(corsOptions)); // Use CORS middleware with options
 app.use(express.json()); // Middleware to parse JSON
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("MongoDB connected"); // eslint-disable-line no-console
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-  });
+const supabaseUrl = "https://obpujqjuhucirpkdqidf.supabase.co";
+const supabaseKey = process.env.SUPABASE_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Route setup
 app.use("/api", authRoutes);

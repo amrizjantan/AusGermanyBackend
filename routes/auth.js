@@ -1,61 +1,63 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import { supabase } from "../index.js";
 
 const router = Router();
 
-// Register a new user
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
-  console.log("Register request body:", req.body); // eslint-disable-line no-console
 
   try {
-    let user = await User.findOne({ username });
-    if (user) {
-      return res.status(400).json({ message: "Username already exists" });
+    const { error } = await supabase
+      .from("users")
+      .insert([{ username, email, password: await bcrypt.hash(password, 10) }])
+      .select();
+
+    if (error?.code === "23505") {
+      return res.status(400).json({ message: "Email already exists." });
     }
 
-    user = new User({ username, email, password });
-    console.log("User object before saving:", user); // eslint-disable-line no-console
+    if (error) {
+      throw new Error(error);
+    }
 
-    await user.save();
-    console.log("User saved successfully:", user); // eslint-disable-line no-console
-
-    // Generate a JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
     res.status(201).json({ message: "User registered successfully", token });
   } catch (err) {
-    console.error("Register error:", err.message);
+    console.error("Error registering user:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// Log in a user
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid username" });
+    const { data, error } = await supabase
+      .from("users")
+      .select()
+      .eq("email", email);
+
+    if (error || !data.length) {
+      console.error(error);
+      return res.status(400).json({ message: "Invalid email" });
     }
 
-    // Compare the plaintext password with the hashed password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    const isCorrectPassword = await bcrypt.compare(password, data[0].password);
+    if (!isCorrectPassword) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    // Generate a JWT token and expires in 1 hour
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
     res.status(200).json({
-      username: user.username,
+      username: data[0].username,
       message: "Logged in successfully",
       token,
     });

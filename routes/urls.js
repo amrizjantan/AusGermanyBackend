@@ -1,8 +1,7 @@
 import { Router } from "express";
 import { check, validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
-import { scrapeUrl } from "../utils/scraper.js";
-import User from "../models/User.js";
+// import { scrapeUrl } from "../utils/scraper.js";
 
 const router = Router();
 
@@ -41,23 +40,19 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { url } = req.body;
+    // const { url } = req.body;
 
     try {
-      const user = await User.findById(req.user.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      // const { title, price, imageUrl } = await scrapeUrl(url);
 
-      const { title, price, imageUrl } = await scrapeUrl(url);
-
-      if (!user.urls.some((item) => item.url === url)) {
-        user.urls.push({ url, title, price, imageUrl });
-        await user.save();
-        res.status(200).json({ message: "URL saved successfully" });
-      } else {
-        res.status(400).json({ message: "URL already exists" });
-      }
+      // if (!user.urls.some((item) => item.url === url)) {
+      //   user.urls.push({ url, title, price, imageUrl });
+      //   await user.save();
+      //   res.status(200).json({ message: "URL saved successfully" });
+      // } else {
+      //   res.status(400).json({ message: "URL already exists" });
+      // }
+      res.sendStatus(200);
     } catch (error) {
       console.error("Error saving URL:", error);
       res.status(500).json({ message: "Server error", error });
@@ -68,12 +63,13 @@ router.post(
 router.get("/get-url", authenticateToken, async (req, res) => {
   // Endpoint to get all URLs for the authenticated user
   try {
-    const user = await User.findById(req.user.userId); // Extract userId from JWT
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    // const user = await User.findById(req.user.userId); // Extract userId from JWT
+    // if (!user) {
+    //   return res.status(404).json({ message: "User not found" });
+    // }
 
-    res.status(200).json({ urls: user.urls });
+    // res.status(200).json({ urls: user.urls });
+    res.sendStatus(500);
   } catch (error) {
     console.error("Error fetching URLs:", error);
     res.status(500).json({ message: "Server error", error });
