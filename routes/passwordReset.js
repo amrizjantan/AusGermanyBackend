@@ -10,13 +10,16 @@ router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
-    const { data, error } = await supabase
+    const { error, data } = await supabase
       .from("users")
-      .select()
+      .select("user_id")
       .eq("email", email);
 
-    if (error || !data.length) {
-      console.error(error);
+    if (error) {
+      throw new Error(JSON.stringify(error));
+    }
+
+    if (!data[0]) {
       return res.status(400).json({ message: "User not found." });
     }
 
@@ -32,7 +35,7 @@ router.post("/forgot-password", async (req, res) => {
       .eq("email", email);
 
     if (updateError) {
-      throw new Error(JSON.stringify(updateError, undefined, 2));
+      throw new Error(JSON.stringify(updateError));
     }
 
     const transporter = nodemailer.createTransport({
@@ -61,8 +64,8 @@ router.post("/forgot-password", async (req, res) => {
     });
 
     res.status(200).json({ message: "Password reset email sent" });
-  } catch (err) {
-    console.error("Forgot password error:", err.message);
+  } catch (error) {
+    console.error("Forgot password error:", JSON.stringify(error.message));
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -72,35 +75,49 @@ router.post("/reset-password/:token", async (req, res) => {
   const { password } = req.body;
 
   try {
-    const { data, error } = await supabase
+    const { error, data } = await supabase
       .from("users")
       .select()
       .eq("reset_password_token", token)
       .gt("reset_password_expiration_timestamp", Date.now());
 
-    if (error || !data.length) {
-      console.error(error);
+    if (error) {
+      throw new Error(JSON.stringify(error));
+    }
+
+    if (!data[0]) {
       return res
         .status(400)
         .json({ message: "Password reset token is invalid or has expired" });
     }
 
-    const { error: updateError } = await supabase
+    const { email } = data[0];
+
+    if (!email) {
+      return res.status(400).json({ message: "User not found." });
+    }
+
+    const { error: updateError, data: updateData } = await supabase
       .from("users")
       .update({
         password: await bcrypt.hash(password, 10),
         reset_password_token: null,
         reset_password_expiration_timestamp: null,
       })
-      .eq("email", data[0].email);
+      .select()
+      .eq("email", email);
 
     if (updateError) {
-      throw new Error(error);
+      throw new Error(JSON.stringify(updateError));
     }
 
-    res.status(200).json({ message: "Password has been reset successfully" });
-  } catch (err) {
-    console.error("Reset password error:", err.message);
+    if (!updateData[0]) {
+      throw new Error("Could not find email address corresponding to token.");
+    }
+
+    res.status(201).json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error("Reset password error:", JSON.stringify(error.message));
     res.status(500).json({ message: "Server error" });
   }
 });

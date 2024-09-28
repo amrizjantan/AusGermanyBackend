@@ -9,26 +9,28 @@ router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from("users")
       .insert([{ username, email, password: await bcrypt.hash(password, 10) }])
-      .select();
+      .select("user_id");
 
     if (error?.code === "23505") {
       return res.status(400).json({ message: "Email already exists." });
     }
 
     if (error) {
-      throw new Error(error);
+      throw new Error(JSON.stringify(error));
     }
 
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+    const { user_id } = data[0];
+
+    const token = jwt.sign({ user_id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
     res.status(201).json({ message: "User registered successfully", token });
-  } catch (err) {
-    console.error("Error registering user:", err.message);
+  } catch (error) {
+    console.error("Error registering user:", JSON.stringify(error.message));
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -37,32 +39,38 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const { data, error } = await supabase
+    const { error, data } = await supabase
       .from("users")
-      .select()
+      .select("user_id, username, password")
       .eq("email", email);
 
-    if (error || !data.length) {
+    if (error) {
+      throw new Error(JSON.stringify(error));
+    }
+
+    if (!data[0]?.user_id) {
       console.error(error);
       return res.status(400).json({ message: "Invalid email" });
     }
 
-    const isCorrectPassword = await bcrypt.compare(password, data[0].password);
+    const { user_id, username, password: encryptedPassword } = data[0];
+
+    const isCorrectPassword = await bcrypt.compare(password, encryptedPassword);
     if (!isCorrectPassword) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ user_id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
     res.status(200).json({
-      username: data[0].username,
+      username: username,
       message: "Logged in successfully",
       token,
     });
-  } catch (err) {
-    console.error("Login error:", err.message);
+  } catch (error) {
+    console.error("Login error:", JSON.stringify(error.message));
     res.status(500).json({ message: "Server error" });
   }
 });
