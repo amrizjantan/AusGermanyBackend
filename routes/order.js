@@ -5,7 +5,7 @@ import authenticateToken from "../middleware/authenticateToken.js";
 
 const router = Router();
 
-// Save URL and Order
+// Save Order
 router.post(
   "/save-order",
   authenticateToken,
@@ -44,5 +44,30 @@ router.post(
     }
   }
 );
+
+// Retrieve Orders
+router.get("/list-orders", authenticateToken, async (req, res) => {
+  const { user_id } = req.user; // Get user_id from the authenticated token
+
+  try {
+    // Fetch orders for the authenticated user
+    const { data: orders, error } = await supabase
+      .from("orders")
+      .select("*") // Select all fields; you can customize this to select specific fields
+      .eq("user_id", user_id); // Filter by user_id
+
+    if (error) {
+      console.error("Error retrieving orders:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to retrieve orders", error });
+    }
+
+    res.status(200).json({ orders });
+  } catch (error) {
+    console.error("Error retrieving orders:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 
 export default router;

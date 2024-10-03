@@ -2,7 +2,7 @@ import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
-import urlRoutes from "./routes/urls.js";
+import orderRoutes from "./routes/order.js";
 import passwordResetRoutes from "./routes/passwordReset.js";
 
 const app = express();
@@ -24,7 +24,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Route setup
 app.use("/api", authRoutes);
-app.use("/api/urls", urlRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/api/password-reset", passwordResetRoutes);
 
 // Fallback route for undefined routes
