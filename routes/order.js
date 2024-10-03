@@ -26,18 +26,21 @@ router.post(
 
     try {
       // Insert the order into the orders table
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .insert([
           { user_id, url, title, price: parseFloat(price), description },
-        ]); // Ensure price is a float
+        ])
+        .select(); // Get the inserted data, including the order_id
 
       if (error) {
         console.error("Error saving order:", error); // Log the error
         return res.status(500).json({ message: "Failed to save order", error });
       }
 
-      res.status(201).json({ message: "Order saved successfully" }); // Respond with success message
+      res
+        .status(201)
+        .json({ message: "Order saved successfully", order: data[0] }); // Respond with success message and the order details
     } catch (error) {
       console.error("Error saving order:", error); // Log unexpected errors
       res.status(500).json({ message: "Server error", error });
@@ -53,7 +56,7 @@ router.get("/list-orders", authenticateToken, async (req, res) => {
     // Fetch orders for the authenticated user
     const { data: orders, error } = await supabase
       .from("orders")
-      .select("*") // Select all fields; you can customize this to select specific fields
+      .select("*") // Select all fields including the ID
       .eq("user_id", user_id); // Filter by user_id
 
     if (error) {
@@ -63,7 +66,7 @@ router.get("/list-orders", authenticateToken, async (req, res) => {
         .json({ message: "Failed to retrieve orders", error });
     }
 
-    res.status(200).json({ orders });
+    res.status(200).json({ orders }); // Return orders which should include order ID
   } catch (error) {
     console.error("Error retrieving orders:", error);
     res.status(500).json({ message: "Server error", error });
