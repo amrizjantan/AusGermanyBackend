@@ -26,32 +26,16 @@ router.post(
     try {
       price = parseFloat(price.replace(",", "."));
 
-      // Check if an order with the same URL already exists for this user
-      const { data: existingOrder, error: checkError } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("user_id", user_id) // Filter by user
-        .eq("url", url); // Filter by URL
-
-      if (checkError) {
-        console.error("Error checking existing order:", checkError);
-        return res
-          .status(500)
-          .json({ message: "Server error", error: checkError });
-      }
-
-      if (existingOrder.length > 0) {
-        // If an order with the same URL already exists, return an error
-        return res
-          .status(400)
-          .json({ message: "Order with the same URL already exists" });
-      }
-
-      // If no existing order, insert the new order
       const { data, error } = await supabase
         .from("orders")
         .insert([{ user_id, url, title, price, description }])
         .select();
+
+      if (error?.code === "23505") {
+        return res.status(400).json({
+          message: "An order of yours with the same Item URL already exists.",
+        });
+      }
 
       if (error) {
         console.error("Error saving order:", error);
