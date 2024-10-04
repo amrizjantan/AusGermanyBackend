@@ -1,9 +1,9 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
-import authRoutes from "./routes/auth.js";
-import orderRoutes from "./routes/order.js";
-import passwordResetRoutes from "./routes/passwordReset.js";
+import userRoutes from "./routes/users.js";
+import orderRoutes from "./routes/orders.js";
+import passwordRoutes from "./routes/passwords.js";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -23,9 +23,9 @@ const supabaseKey = process.env.SUPABASE_KEY;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Route setup
-app.use("/api", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/password-reset", passwordResetRoutes);
+app.use("/api/passwords", passwordRoutes);
 
 // Fallback route for undefined routes
 app.use((_req, res) => {
