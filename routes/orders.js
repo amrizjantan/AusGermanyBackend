@@ -6,7 +6,7 @@ import authenticateToken from "../middleware/authenticateToken.js";
 const router = Router();
 
 router.post(
-  "/save-order",
+  "/",
   authenticateToken,
   [
     check("url", "URL is required").isURL(),
@@ -53,7 +53,7 @@ router.post(
 );
 
 // Retrieve Orders
-router.get("/list-orders", authenticateToken, async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
 
   try {

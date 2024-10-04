@@ -6,8 +6,8 @@ import { supabase } from "../index.js";
 
 const router = Router();
 
-router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
+router.get("/:email", async (req, res) => {
+  const { email } = req.params;
 
   try {
     const { error, data } = await supabase
@@ -70,7 +70,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-router.post("/reset-password/:token", async (req, res) => {
+router.put("/passwords/:token", async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
 
