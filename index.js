@@ -4,12 +4,16 @@ import cors from "cors";
 import userRoutes from "./routes/users.js";
 import orderRoutes from "./routes/orders.js";
 import passwordRoutes from "./routes/passwords.js";
+import adminRoutes from "./routes/admin.js"; // Import admin routes
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 const corsOptions = {
-  origin: "http://localhost:5173", // Replace with your frontend URL if different
+  origin: [
+    "http://localhost:5173", // User app URL
+    "http://localhost:5174", // Admin panel URL
+  ],
   methods: "GET,POST,PUT,DELETE",
   allowedHeaders: "Content-Type,Authorization",
 };
@@ -26,6 +30,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/passwords", passwordRoutes);
+app.use("/api/admin", adminRoutes); // Admin routes !
 
 // Fallback route for undefined routes
 app.use((_req, res) => {
