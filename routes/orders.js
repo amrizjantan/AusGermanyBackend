@@ -52,7 +52,7 @@ router.post(
   }
 );
 
-// Retrieve Orders
+// Retrieve Orders for Users "URL Card"
 router.get("/", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
 
@@ -77,4 +77,22 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
+// Route for Admin Panel to fetch all orders
+router.get("/admin/orders", authenticateToken, async (req, res) => {
+  try {
+    const { data: orders, error } = await supabase.from("orders").select("*");
+
+    if (error) {
+      console.error("Error retrieving orders:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to retrieve orders", error });
+    }
+
+    res.status(200).json({ orders });
+  } catch (error) {
+    console.error("Error retrieving orders:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 export default router;

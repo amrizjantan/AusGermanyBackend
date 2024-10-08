@@ -60,7 +60,7 @@ router.post("/login", async (req, res) => {
   try {
     // Find the admin in the database
     const { data: admin, error: adminError } = await supabase
-      .from("admins") // Ensure you have the correct table name
+      .from("admins")
       .select("*")
       .eq("email", email)
       .single(); // Fetch a single record
@@ -70,19 +70,20 @@ router.post("/login", async (req, res) => {
     }
 
     // Verify the password
-    const passwordMatch = await bcrypt.compare(password, admin.password); // Assuming the password is hashed
+    const passwordMatch = await bcrypt.compare(password, admin.password);
     if (!passwordMatch) {
       return res.status(400).json({ message: "Invalid password." });
     }
 
-    // Generate a token (assuming you have a function to create JWT tokens)
+    // Generate a token
     const token = jwt.sign(
       { id: admin.id, email: admin.email },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    res.status(200).json({ token });
+    // Respond with token and user info
+    res.status(200).json({ token, user: { id: admin.id, email: admin.email } });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server error." });
