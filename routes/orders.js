@@ -77,10 +77,13 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Route for Admin Panel to fetch all orders
 router.get("/admin/orders", authenticateToken, async (req, res) => {
   try {
-    const { data: orders, error } = await supabase.from("orders").select("*");
+    // Join orders with users to get username and email
+    const { data: orders, error } = await supabase.from("orders").select(`
+        *,
+        users(username, email)
+      `);
 
     if (error) {
       console.error("Error retrieving orders:", error);
@@ -89,10 +92,12 @@ router.get("/admin/orders", authenticateToken, async (req, res) => {
         .json({ message: "Failed to retrieve orders", error });
     }
 
+    // Return the orders with associated user details
     res.status(200).json({ orders });
   } catch (error) {
     console.error("Error retrieving orders:", error);
     res.status(500).json({ message: "Server error", error });
   }
 });
+
 export default router;
