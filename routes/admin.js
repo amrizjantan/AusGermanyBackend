@@ -1,92 +1,76 @@
-// backend/routes/admin.js
-import bcrypt from "bcrypt"; // Import bcrypt for password hashing
 import { Router } from "express";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { supabase } from "../index.js";
-import jwt from "jsonwebtoken"; // Import jsonwebtoken
 
 const router = Router();
 
-// Route to register a new admin
 router.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Check if an admin already exists with the given email
-    const { data: existingAdmin, error: findError } = await supabase
-      .from("admins")
-      .select("id")
-      .eq("email", email)
-      .single();
+    const { error, data } = await supabase
+      .from("users")
+      .insert([{ email, password: await bcrypt.hash(password, 10) }])
+      .select("user_id");
 
-    if (existingAdmin) {
-      return res
-        .status(400)
-        .json({ message: "Admin with this email already exists." });
+    if (error?.code === "23505") {
+      return res.status(400).json({ message: "Email already exists." });
     }
 
-    if (findError && findError.code !== "PGRST116") {
-      return res.status(500).json({
-        message: "Failed to check for existing admin",
-        error: findError,
-      });
+    if (error) {
+      throw new Error(JSON.stringify(error));
     }
 
-    // Hash the password before saving to the database
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { user_id } = data[0];
 
-    // Insert new admin into the 'admins' table
-    const { data: admin, error: insertError } = await supabase
-      .from("admins")
-      .insert([{ email, password: hashedPassword }])
-      .select();
+    const token = jwt.sign({ user_id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
-    if (insertError) {
-      return res
-        .status(500)
-        .json({ message: "Failed to register admin", error: insertError });
-    }
-
-    res.status(201).json({ message: "Admin registered successfully", admin });
+    res.status(201).json({ message: "User registered successfully", token });
   } catch (error) {
     console.error("Error registering admin:", error);
     res.status(500).json({ message: "Server error", error });
   }
 });
 
-// Route to handle admin login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Find the admin in the database
-    const { data: admin, error: adminError } = await supabase
-      .from("admins")
-      .select("*")
-      .eq("email", email)
-      .single(); // Fetch a single record
+    const { error, data } = await supabase
+      .from("admin")
+      .select("user_id, password")
+      .eq("email", email);
 
-    if (adminError || !admin) {
-      return res.status(400).json({ message: "Admin not found." });
+    if (error) {
+      throw new Error(JSON.stringify(error));
     }
 
-    // Verify the password
-    const passwordMatch = await bcrypt.compare(password, admin.password);
-    if (!passwordMatch) {
-      return res.status(400).json({ message: "Invalid password." });
+    if (!data[0]?.user_id) {
+      console.error(error);
+      return res.status(400).json({ message: "Invalid email" });
     }
 
-    // Generate a token
-    const token = jwt.sign(
-      { id: admin.id, email: admin.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    const { user_id, password: encryptedPassword } = data[0];
 
-    // Respond with token and user info
-    res.status(200).json({ token, user: { id: admin.id, email: admin.email } });
+    const isCorrectPassword = await bcrypt.compare(password, encryptedPassword);
+    if (!isCorrectPassword) {
+      return res.status(400).json({ message: "Invalid password" });
+    }
+
+    const token = jwt.sign({ user_id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.status(200).json({
+      message: "Logged in successfully",
+      token,
+    });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Server error." });
+    console.error("Login error:", JSON.stringify(error.message));
+    res.status(500).json({ message: "Server error" });
   }
 });
 
