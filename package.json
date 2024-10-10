@@ -12,7 +12,9 @@
     "preinstall": "node check-version.js",
     "dev": "node check-version.js && turbowatch ./watcher.js",
     "start": "node check-version.js && node --env-file=.env index.js",
-    "check-version": "node check-version.js verbose"
+    "check-version": "node check-version.js verbose",
+    "stripe:listen": "stripe listen --forward-to localhost:5001/api/stripe",
+    "stripe:trigger": "stripe trigger payment_intent.succeeded"
   },
   "keywords": [
     "backend",
@@ -29,7 +31,8 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.15",
     "open-graph-scraper": "^6.8.0",
-    "puppeteer": "^23.1.1"
+    "puppeteer": "^23.1.1",
+    "stripe": "^17.1.0"
   },
   "devDependencies": {
     "eslint": "^9.10.0",
