@@ -103,8 +103,15 @@ router.get("/admin/orders", authenticateToken, async (req, res) => {
 // Update Order
 router.put("/:id/update", authenticateToken, async (req, res) => {
   const { id } = req.params; // Extract order ID from URL
-  const { postal_fee, service_fee, price, title, description, platform } =
-    req.body;
+  const {
+    postal_fee,
+    service_fee,
+    price,
+    title,
+    description,
+    platform,
+    total_amount,
+  } = req.body;
 
   try {
     // update the order
@@ -117,6 +124,7 @@ router.put("/:id/update", authenticateToken, async (req, res) => {
         title,
         description,
         platform,
+        total_amount,
       })
       .eq("order_id", id) // 'id' is the primary key
       .select();
