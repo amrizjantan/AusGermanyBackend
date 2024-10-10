@@ -10,9 +10,9 @@ router.post("/register", async (req, res) => {
 
   try {
     const { error, data } = await supabase
-      .from("users")
+      .from("admins")
       .insert([{ email, password: await bcrypt.hash(password, 10) }])
-      .select("user_id");
+      .select("admin_id");
 
     if (error?.code === "23505") {
       return res.status(400).json({ message: "Email already exists." });
@@ -22,16 +22,15 @@ router.post("/register", async (req, res) => {
       throw new Error(JSON.stringify(error));
     }
 
-    const { user_id } = data[0];
-
-    const token = jwt.sign({ user_id }, process.env.JWT_SECRET, {
+    const { admin_id } = data[0];
+    const token = jwt.sign({ admin_id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
     res.status(201).json({ message: "User registered successfully", token });
   } catch (error) {
-    console.error("Error registering admin:", error);
-    res.status(500).json({ message: "Server error", error });
+    console.error("Error registering admin:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -40,37 +39,33 @@ router.post("/login", async (req, res) => {
 
   try {
     const { error, data } = await supabase
-      .from("admin")
-      .select("user_id, password")
+      .from("admins")
+      .select("admin_id, password")
       .eq("email", email);
 
     if (error) {
       throw new Error(JSON.stringify(error));
     }
 
-    if (!data[0]?.user_id) {
-      console.error(error);
+    if (!data[0]?.admin_id) {
       return res.status(400).json({ message: "Invalid email" });
     }
 
-    const { user_id, password: encryptedPassword } = data[0];
+    const { admin_id, password: encryptedPassword } = data[0];
 
     const isCorrectPassword = await bcrypt.compare(password, encryptedPassword);
     if (!isCorrectPassword) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ user_id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ admin_id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
-    res.status(200).json({
-      message: "Logged in successfully",
-      token,
-    });
+    res.status(200).json({ message: "Logged in successfully", token });
   } catch (error) {
-    console.error("Login error:", JSON.stringify(error.message));
-    res.status(500).json({ message: "Server error" });
+    console.error("Login error:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 

@@ -4,7 +4,7 @@ import cors from "cors";
 import userRoutes from "./routes/users.js";
 import orderRoutes from "./routes/orders.js";
 import passwordRoutes from "./routes/passwords.js";
-import adminRoutes from "./routes/admin.js"; // Import admin routes
+import adminRoutes from "./routes/admins.js";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -30,7 +30,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/passwords", passwordRoutes);
-app.use("/api/admin", adminRoutes); // Admin routes !
+app.use("/api/admins", adminRoutes); // Admin routes !
 
 // Fallback route for undefined routes
 app.use((_req, res) => {
