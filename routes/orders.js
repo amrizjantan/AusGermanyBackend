@@ -100,4 +100,45 @@ router.get("/admin/orders", authenticateToken, async (req, res) => {
   }
 });
 
+// Update Order
+router.put("/:id/update", authenticateToken, async (req, res) => {
+  const { id } = req.params; // Extract order ID from URL
+  const { postal_fee, service_fee, price, title, description, platform } =
+    req.body;
+
+  try {
+    // update the order
+    const { data, error } = await supabase
+      .from("orders")
+      .update({
+        postal_fee,
+        service_fee,
+        price,
+        title,
+        description,
+        platform,
+      })
+      .eq("order_id", id) // 'id' is the primary key
+      .select();
+
+    if (error) {
+      console.error("Error updating order:", error);
+      return res.status(500).json({ message: "Failed to update order", error });
+    }
+
+    if (data.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Order not found or no changes made." });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Order updated successfully.", order: data[0] });
+  } catch (error) {
+    console.error("Update error:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
 export default router;
