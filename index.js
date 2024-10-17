@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
 import userRoutes from "./routes/users.js";
 import orderRoutes from "./routes/orders.js";
+import paymentRoutes from "./routes/payment.js";
 import passwordRoutes from "./routes/passwords.js";
 import adminRoutes from "./routes/admins.js";
 
@@ -29,6 +30,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 // Route setup
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/payment", paymentRoutes);
 app.use("/api/passwords", passwordRoutes);
 app.use("/api/admins", adminRoutes); // Admin routes !
 
