@@ -10,7 +10,7 @@
   },
   "scripts": {
     "preinstall": "node check-version.js",
-    "dev": "node check-version.js && turbowatch ./watcher.js",
+    "dev": "node check-version.js && ROARR_LOG=true turbowatch ./watcher.js",
     "start": "node check-version.js && node --env-file=.env index.js",
     "check-version": "node check-version.js verbose",
     "stripe:listen": "stripe listen --forward-to localhost:5001/api/stripe",
@@ -35,6 +35,7 @@
     "stripe": "^17.1.0"
   },
   "devDependencies": {
+    "@roarr/cli": "^5.12.4",
     "eslint": "^9.10.0",
     "prettier": "^3.3.3",
     "turbowatch": "^2.29.4"
