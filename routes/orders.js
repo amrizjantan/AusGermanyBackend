@@ -5,6 +5,7 @@ import authenticateToken from "../middleware/authenticateToken.js";
 
 const router = Router();
 
+// User send URL / make order request
 router.post(
   "/",
   authenticateToken,
@@ -77,6 +78,7 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
+// Admin Panel/Dashboard: Retrieve Orders
 router.get("/admin/orders", authenticateToken, async (req, res) => {
   try {
     // Join orders with users to get username and email
@@ -100,9 +102,9 @@ router.get("/admin/orders", authenticateToken, async (req, res) => {
   }
 });
 
-// Update Order
-router.put("/:id/update", authenticateToken, async (req, res) => {
-  const { id } = req.params; // Extract order ID from URL
+// Admin Panel/Dashboard: Review and send Offer to clients
+router.put("/:id/offer", authenticateToken, async (req, res) => {
+  const { id } = req.params;
   const {
     postal_fee,
     service_fee,
@@ -114,7 +116,7 @@ router.put("/:id/update", authenticateToken, async (req, res) => {
   } = req.body;
 
   try {
-    // update the order
+    // Update the order with the new details and mark as 'offer_sent'
     const { data, error } = await supabase
       .from("orders")
       .update({
@@ -125,13 +127,14 @@ router.put("/:id/update", authenticateToken, async (req, res) => {
         description,
         platform,
         total_amount,
+        admin_status: "offer_sent", // Update admin status to reflect offer sent
       })
-      .eq("order_id", id) // 'id' is the primary key
+      .eq("order_id", id)
       .select();
 
     if (error) {
-      console.error("Error updating order:", error);
-      return res.status(500).json({ message: "Failed to update order", error });
+      console.error("Error sending offer:", error);
+      return res.status(500).json({ message: "Failed to send offer", error });
     }
 
     if (data.length === 0) {
@@ -139,12 +142,42 @@ router.put("/:id/update", authenticateToken, async (req, res) => {
         .status(404)
         .json({ message: "Order not found or no changes made." });
     }
-
     res
       .status(200)
-      .json({ message: "Order updated successfully.", order: data[0] });
+      .json({ message: "Offer sent successfully.", order: data[0] });
   } catch (error) {
-    console.error("Update error:", error);
+    console.error("Send offer error:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
+// Admin Panel/Dashboard: Reject Order
+router.put("/:id/reject", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .update({ admin_status: "rejected" })
+      .eq("order_id", id)
+      .select();
+
+    if (error) {
+      console.error("Error rejecting order:", error);
+      return res.status(500).json({ message: "Failed to reject order", error });
+    }
+
+    if (data.length === 0) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+    // Return a fixed message
+    res.status(200).json({
+      message:
+        "Order rejected successfully. Item is no longer available or we can propose such a request.",
+      order: data[0],
+    });
+  } catch (error) {
+    console.error("Reject error:", error);
     res.status(500).json({ message: "Server error." });
   }
 });
