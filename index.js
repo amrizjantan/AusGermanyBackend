@@ -10,16 +10,23 @@ import adminRoutes from "./routes/admins.js";
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-const corsOptions = {
-  origin: [
-    "http://localhost:5173", // User app URL
-    "http://localhost:5174", // Admin panel URL
-  ],
-  methods: "GET,POST,PUT,DELETE",
-  allowedHeaders: "Content-Type,Authorization",
-};
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173", // User
+      "http://localhost:5174", // Admin
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
-app.use(cors(corsOptions)); // Use CORS middleware with options
+// Handle preflight requests
+app.options("*", (req, res) => {
+  res.sendStatus(204); // No Content
+});
+
 app.use(express.json()); // Middleware to parse JSON
 
 const supabaseUrl = "https://obpujqjuhucirpkdqidf.supabase.co";

@@ -14,14 +14,15 @@ router.post("/:order_id", authenticateToken, async (req, res) => {
   try {
     const { error, data } = await supabase
       .from("orders")
-      .select("price")
-      .match({ order_id, user_id });
+      .select("price, title, users(email)")
+      .match({ order_id, user_id })
+      .single();
 
-    if (error || !data[0]) {
+    if (error || !data) {
       throw new Error(`Error finding order: ${JSON.stringify(error)}`);
     }
 
-    const totalAmount = Number(data[0].price) * 100;
+    const totalAmount = Number(data.price) * 100;
 
     if (!totalAmount) {
       throw new Error(`Error calculating price.`);
@@ -32,11 +33,15 @@ router.post("/:order_id", authenticateToken, async (req, res) => {
     // For full details see https://stripe.com/docs/api/checkout/sessions/create
     const { url } = await stripe.checkout.sessions.create({
       mode: "payment",
+      customer_email: data.email,
       line_items: [
         {
-          price: {
+          price_data: {
             unit_amount: totalAmount,
             currency: "eur",
+            product_data: {
+              name: data.title,
+            },
           },
           quantity: 1,
         },
@@ -48,7 +53,7 @@ router.post("/:order_id", authenticateToken, async (req, res) => {
       automatic_tax: { enabled: true },
     });
 
-    return res.redirect(303, url);
+    return res.status(303).json({ url });
   } catch (error) {
     console.error("Error creating checkout:", error);
     res.status(500).json({ message: "Server error", error });
