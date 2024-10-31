@@ -42,7 +42,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/passwords", passwordRoutes);
 app.use("/api/admins", adminRoutes); // Admin routes !
-app.use("/api/items", uploadsRoutes);
+app.use("/api/uploads", uploadsRoutes);
 
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true })); // For parsing application/x-www-form-urlencoded
