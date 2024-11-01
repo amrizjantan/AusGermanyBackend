@@ -63,19 +63,31 @@ router.post(
 
       const uploadedImageUrls = await Promise.all(imageUploadPromises);
 
-      // Insert the upload details into the database
-      const { error: dbError } = await supabase.from("uploads").insert([
-        {
-          title,
-          description,
-          price,
-          images: uploadedImageUrls, // Store the URLs of the uploaded images
-          user_id: req.user.user_id, // Associate item with the logged-in user
-        },
-      ]);
+      const { error: databaseInsertError } = await supabase
+        .from("uploads")
+        .insert([
+          {
+            title,
+            description,
+            price,
+            images: uploadedImageUrls,
+            user_id: req.user.user_id,
+          },
+        ]);
 
-      if (dbError) {
-        throw dbError;
+      if (databaseInsertError) {
+        // delete from storage if insert to database failed
+        const { error: storageDeleteError } = await supabase.storage
+          .from("uploads")
+          .remove(uploadedImageUrls.map((imageUrl) => imageUrl.slice(66)));
+
+        throw {
+          databaseInsertError,
+          storageDeleteError,
+          message: storageDeleteError
+            ? `${databaseInsertError.message} | ${storageDeleteError.message}`
+            : databaseInsertError.message,
+        };
       }
 
       res.status(200).json({ message: "Item uploaded successfully!" });
