@@ -229,4 +229,27 @@ router.put("/:id/fees", authenticateToken, async (req, res) => {
   }
 });
 
+// Retrieve All Approved Uploads for Marketplace Card
+router.get("/", authenticateToken, async (req, res) => {
+  try {
+    // Fetch all uploads with approved status
+    const { data: uploads, error } = await supabase
+      .from("uploads")
+      .select("*")
+      .eq("admin_status", "approved"); // Filter by admin_status "approved"
+
+    if (error) {
+      console.error("Error retrieving uploads:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to retrieve uploads", error });
+    }
+
+    res.status(200).json({ uploads });
+  } catch (error) {
+    console.error("Error retrieving uploads:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
 export default router;
