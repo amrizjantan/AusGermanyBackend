@@ -59,7 +59,7 @@ router.post(
           title,
           description,
           price,
-          images: uploadedImageUrls, // Store the image URLs
+          images: uploadedImageUrls,
           user_id: req.user.user_id, // Associate item with the logged-in user
         },
       ]);
@@ -78,7 +78,6 @@ router.post(
   }
 );
 
-// Admin Panel/Dashboard: Retrieve All Uploads
 // Admin Panel/Dashboard: Retrieve Uploads
 router.get("/admin/uploads", authenticateToken, async (req, res) => {
   try {
@@ -108,15 +107,15 @@ router.get("/admin/uploads", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Approve Upload
-router.put("/uploads/:id/approve", authenticateToken, async (req, res) => {
+// Admin Panel/Dashboard: Approve Order
+router.put("/:id/approve", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
     const { data, error } = await supabase
-      .from("uploads") // Updated to 'uploads'
-      .update({ admin_status: "approved" }) // Assuming admin_status field exists
-      .eq("item_id", id) // Assuming item_id is the primary key
+      .from("uploads")
+      .update({ admin_status: "approved" })
+      .eq("upload_id", id)
       .select();
 
     if (error) {
@@ -130,43 +129,43 @@ router.put("/uploads/:id/approve", authenticateToken, async (req, res) => {
       return res.status(404).json({ message: "Upload not found." });
     }
 
-    res
-      .status(200)
-      .json({ message: "Upload approved successfully.", upload: data[0] });
+    // Return a fixed message
+    res.status(200).json({
+      message: "Upload approved successfully.",
+      order: data[0],
+    });
   } catch (error) {
-    console.error("Approve upload error:", error);
+    console.error("Upload error:", error);
     res.status(500).json({ message: "Server error." });
   }
 });
 
-// Admin Panel/Dashboard: Reject Upload
-router.put("/uploads/:id/reject", authenticateToken, async (req, res) => {
+// Reject Upload
+router.put("/:id/reject", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
     const { data, error } = await supabase
-      .from("uploads") // Updated to 'uploads'
-      .update({ admin_status: "rejected" }) // Assuming admin_status field exists
-      .eq("item_id", id) // Assuming item_id is the primary key
+      .from("uploads")
+      .update({ admin_status: "rejected" })
+      .eq("upload_id", id)
       .select();
 
     if (error) {
-      console.error("Error rejecting upload:", error);
-      return res
-        .status(500)
-        .json({ message: "Failed to reject upload", error });
+      console.error("Error rejecting order:", error);
+      return res.status(500).json({ message: "Failed to reject order", error });
     }
 
     if (data.length === 0) {
       return res.status(404).json({ message: "Upload not found." });
     }
-
+    // Return a fixed message
     res.status(200).json({
-      message: "Upload rejected successfully. The item will not be available.",
-      upload: data[0],
+      message: "Upload rejected successfully. ",
+      order: data[0],
     });
   } catch (error) {
-    console.error("Reject upload error:", error);
+    console.error("Reject error:", error);
     res.status(500).json({ message: "Server error." });
   }
 });
