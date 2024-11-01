@@ -6,11 +6,9 @@ import { supabase } from "../index.js";
 
 const router = express.Router();
 
-// Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Upload Item Route
 router.post(
   "/",
   authenticateToken,
@@ -19,7 +17,6 @@ router.post(
   async (req, res) => {
     const { title, description, price } = req.body;
 
-    // Validate input fields
     if (
       !title ||
       !description ||
@@ -34,18 +31,16 @@ router.post(
     }
 
     try {
-      // Upload images to Supabase storage
       const imageUploadPromises = req.files.map(async (file) => {
-        const uniqueFileName = `uploads/${Date.now()}-${file.originalname}`;
+        const uniqueFileName = `${Date.now()}-${file.originalname}`;
 
-        // Upload the file to Supabase storage
         const {
           data: { fullPath },
           error: uploadError,
         } = await supabase.storage
-          .from("uploads") // Supabase bucket name
+          .from("uploads")
           .upload(uniqueFileName, file.buffer, {
-            contentType: file.mimetype, // Set the correct MIME type
+            contentType: file.mimetype,
           });
 
         if (uploadError) {
@@ -100,11 +95,9 @@ router.post(
   }
 );
 
-// Admin Panel/Dashboard: Retrieve Uploads
 router.get("/admin/uploads", authenticateToken, async (req, res) => {
   try {
-    const { data: uploads, error } = await supabase.from("uploads") // Fetch from 'uploads' table
-      .select(`
+    const { data: uploads, error } = await supabase.from("uploads").select(`
         upload_id,
         user_id,
         images,
@@ -132,13 +125,11 @@ router.get("/admin/uploads", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Approve Upload
 router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
   const { uploadId } = req.params;
   const { postal_fee, service_fee, description, total_amount } = req.body;
 
   try {
-    // Update the upload in Supabase
     const { data, error } = await supabase
       .from("uploads")
       .update({
@@ -146,10 +137,10 @@ router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
         service_fee,
         description,
         total_amount,
-        admin_status: "approved", // Update the status to approved
-        // No updated_at field needed
+        admin_status: "approved",
+        // no updated_at field needed
       })
-      .eq("upload_id", uploadId) // Ensure you're targeting the right upload
+      .eq("upload_id", uploadId)
       .select();
 
     if (error) {
@@ -171,7 +162,6 @@ router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
   }
 });
 
-// Reject Upload
 router.put("/:id/reject", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
@@ -203,12 +193,10 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Update Fees
 router.put("/:id/fees", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { postal_fee, service_fee, total_amount } = req.body;
 
-  // Validate inputs
   if (postal_fee == null || service_fee == null || total_amount == null) {
     return res.status(400).json({
       message: "postal_fee, service_fee, and total_amount are required.",
@@ -244,11 +232,10 @@ router.put("/:id/fees", authenticateToken, async (req, res) => {
 // Retrieve All Approved Uploads for Marketplace Card
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    // Fetch all uploads with approved status
     const { data: uploads, error } = await supabase
       .from("uploads")
       .select("*")
-      .eq("admin_status", "approved"); // Filter by admin_status "approved"
+      .eq("admin_status", "approved");
 
     if (error) {
       console.error("Error retrieving uploads:", error);
