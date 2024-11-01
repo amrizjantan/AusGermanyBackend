@@ -79,12 +79,19 @@ router.post(
 );
 
 // Admin Panel/Dashboard: Retrieve All Uploads
+// Admin Panel/Dashboard: Retrieve Uploads
 router.get("/admin/uploads", authenticateToken, async (req, res) => {
   try {
-    const { data: uploads, error } = await supabase.from("uploads") // Updated to 'uploads'
+    const { data: uploads, error } = await supabase.from("uploads") // Fetch from 'uploads' table
       .select(`
-        *,
-        users(username, email) // Join user info if needed
+        upload_id,  
+        user_id,   
+        images, 
+        title, 
+        description, 
+        price, 
+        admin_status,
+        users(username, email) 
       `);
 
     if (error) {
