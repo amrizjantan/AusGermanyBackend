@@ -39,7 +39,10 @@ router.post(
         const uniqueFileName = `uploads/${Date.now()}-${file.originalname}`;
 
         // Upload the file to Supabase storage
-        const { error: uploadError } = await supabase.storage
+        const {
+          data: { fullPath },
+          error: uploadError,
+        } = await supabase.storage
           .from("uploads") // Supabase bucket name
           .upload(uniqueFileName, file.buffer, {
             contentType: file.mimetype, // Set the correct MIME type
@@ -49,11 +52,13 @@ router.post(
           throw uploadError;
         }
 
-        // Get public URL of the uploaded image
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("uploads").getPublicUrl(uniqueFileName);
-        return publicUrl;
+        if (!fullPath) {
+          throw new Error(
+            `Could not retrieve image url after upload of: ${file.originalname}`
+          );
+        }
+
+        return `https://obpujqjuhucirpkdqidf.supabase.co/storage/v1/object/public/${fullPath}`;
       });
 
       const uploadedImageUrls = await Promise.all(imageUploadPromises);
