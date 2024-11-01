@@ -19,6 +19,7 @@ router.post(
   async (req, res) => {
     const { title, description, price } = req.body;
 
+    // Validate input fields
     if (
       !title ||
       !description ||
@@ -33,18 +34,22 @@ router.post(
     }
 
     try {
+      // Upload images to Supabase storage
       const imageUploadPromises = req.files.map(async (file) => {
         const uniqueFileName = `uploads/${Date.now()}-${file.originalname}`;
-        const { error } = await supabase.storage
+
+        // Upload the file to Supabase storage
+        const { error: uploadError } = await supabase.storage
           .from("uploads") // Supabase bucket name
           .upload(uniqueFileName, file.buffer, {
             contentType: file.mimetype, // Set the correct MIME type
           });
 
-        if (error) {
-          throw error;
+        if (uploadError) {
+          throw uploadError;
         }
 
+        // Get public URL of the uploaded image
         const {
           data: { publicUrl },
         } = supabase.storage.from("uploads").getPublicUrl(uniqueFileName);
@@ -53,13 +58,13 @@ router.post(
 
       const uploadedImageUrls = await Promise.all(imageUploadPromises);
 
+      // Insert the upload details into the database
       const { error: dbError } = await supabase.from("uploads").insert([
-        // Updated to 'uploads'
         {
           title,
           description,
           price,
-          images: uploadedImageUrls,
+          images: uploadedImageUrls, // Store the URLs of the uploaded images
           user_id: req.user.user_id, // Associate item with the logged-in user
         },
       ]);
@@ -83,12 +88,15 @@ router.get("/admin/uploads", authenticateToken, async (req, res) => {
   try {
     const { data: uploads, error } = await supabase.from("uploads") // Fetch from 'uploads' table
       .select(`
-        upload_id,  
-        user_id,   
-        images, 
-        title, 
-        description, 
-        price, 
+        upload_id,
+        user_id,
+        images,
+        title,
+        description,
+        price,
+        postal_fee,
+        service_fee,
+        total_amount,
         admin_status,
         users(username, email) 
       `);
@@ -107,36 +115,42 @@ router.get("/admin/uploads", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Approve Order
-router.put("/:id/approve", authenticateToken, async (req, res) => {
-  const { id } = req.params;
+// Admin Panel/Dashboard: Approve Upload
+router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
+  const { uploadId } = req.params;
+  const { postal_fee, service_fee, description, total_amount } = req.body;
 
   try {
+    // Update the upload in Supabase
     const { data, error } = await supabase
       .from("uploads")
-      .update({ admin_status: "approved" })
-      .eq("upload_id", id)
+      .update({
+        postal_fee,
+        service_fee,
+        description,
+        total_amount,
+        admin_status: "approved", // Update the status to approved
+        // No updated_at field needed
+      })
+      .eq("upload_id", uploadId) // Ensure you're targeting the right upload
       .select();
 
     if (error) {
-      console.error("Error approving upload:", error);
-      return res
-        .status(500)
-        .json({ message: "Failed to approve upload", error });
+      console.error("Error updating upload:", error);
+      return res.status(500).json({ message: "Error updating upload.", error });
     }
 
     if (data.length === 0) {
       return res.status(404).json({ message: "Upload not found." });
     }
 
-    // Return a fixed message
     res.status(200).json({
       message: "Upload approved successfully.",
-      order: data[0],
+      upload: data[0],
     });
   } catch (error) {
-    console.error("Upload error:", error);
-    res.status(500).json({ message: "Server error." });
+    console.error("Error updating upload:", error);
+    return res.status(500).json({ message: "Error updating upload." });
   }
 });
 
@@ -152,20 +166,60 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
       .select();
 
     if (error) {
-      console.error("Error rejecting order:", error);
-      return res.status(500).json({ message: "Failed to reject order", error });
+      console.error("Error rejecting upload:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to reject upload", error });
     }
 
     if (data.length === 0) {
       return res.status(404).json({ message: "Upload not found." });
     }
-    // Return a fixed message
+
     res.status(200).json({
-      message: "Upload rejected successfully. ",
-      order: data[0],
+      message: "Upload rejected successfully.",
+      upload: data[0],
     });
   } catch (error) {
     console.error("Reject error:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
+// Admin Panel/Dashboard: Update Fees
+router.put("/:id/fees", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { postal_fee, service_fee, total_amount } = req.body;
+
+  // Validate inputs
+  if (postal_fee == null || service_fee == null || total_amount == null) {
+    return res.status(400).json({
+      message: "postal_fee, service_fee, and total_amount are required.",
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("uploads")
+      .update({ postal_fee, service_fee, total_amount })
+      .eq("upload_id", id)
+      .select();
+
+    if (error) {
+      console.error("Error updating fees:", error);
+      return res.status(500).json({ message: "Failed to update fees", error });
+    }
+
+    if (data.length === 0) {
+      return res.status(404).json({ message: "Upload not found." });
+    }
+
+    res.status(200).json({
+      message: "Fees updated successfully.",
+      upload: data[0],
+    });
+  } catch (error) {
+    console.error("Update fees error:", error);
     res.status(500).json({ message: "Server error." });
   }
 });
