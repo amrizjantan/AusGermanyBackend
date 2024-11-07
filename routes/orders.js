@@ -5,7 +5,7 @@ import authenticateToken from "../middleware/authenticateToken.js";
 
 const router = Router();
 
-// User send URL / make order request
+// User send URL , make order request
 router.post(
   "/",
   authenticateToken,
@@ -53,7 +53,7 @@ router.post(
   }
 );
 
-// Retrieve Orders for Users "URL Card"
+// Retrieve Orders for Customers "URL Card"
 router.get("/", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
 
@@ -78,7 +78,7 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Retrieve Orders
+// Admin Dashboard: Retrieve Orders
 router.get("/admin/orders", authenticateToken, async (req, res) => {
   try {
     // Join orders with users to get username and email
@@ -102,7 +102,7 @@ router.get("/admin/orders", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Review and send Offer to clients
+// Admin Panel/Dashboard: Review and send Offer to customers
 router.put("/:id/offer", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const {
@@ -127,7 +127,7 @@ router.put("/:id/offer", authenticateToken, async (req, res) => {
         description,
         platform,
         total_amount,
-        admin_status: "offer_sent", // Update admin status to reflect offer sent
+        admin_status: "offer_sent",
       })
       .eq("order_id", id)
       .select();
@@ -151,7 +151,7 @@ router.put("/:id/offer", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Reject Order
+// Admin Dashboard: Reject Order
 router.put("/:id/reject", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
@@ -170,12 +170,65 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
     if (data.length === 0) {
       return res.status(404).json({ message: "Order not found." });
     }
-    // Return a fixed message
     res.status(200).json({
       message:
         "Order rejected successfully. Item is no longer available or we can propose such a request.",
       order: data[0],
     });
+  } catch (error) {
+    console.error("Reject error:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
+// Customer accepts the offer
+router.put("/:id/accept", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .update({ admin_status: "offer_accepted" })
+      .eq("order_id", id)
+      .select();
+
+    if (error) {
+      console.error("Error accepting offer:", error);
+      return res.status(500).json({ message: "Failed to accept offer", error });
+    }
+
+    if (data.length === 0) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    res.status(200).json({ message: "Offer accepted.", order: data[0] });
+  } catch (error) {
+    console.error("Accept error:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
+// Customer rejects the offer
+router.put("/:id/reject", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .update({ admin_status: "offer_rejected" })
+      .eq("order_id", id)
+      .select();
+
+    if (error) {
+      console.error("Error rejecting offer:", error);
+      return res.status(500).json({ message: "Failed to reject offer", error });
+    }
+
+    if (data.length === 0) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    res.status(200).json({ message: "Offer rejected.", order: data[0] });
   } catch (error) {
     console.error("Reject error:", error);
     res.status(500).json({ message: "Server error." });
