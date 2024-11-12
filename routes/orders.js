@@ -5,7 +5,7 @@ import authenticateToken from "../middleware/authenticateToken.js";
 
 const router = Router();
 
-// User send URL , make order request
+// Customers send URL , make order request
 router.post(
   "/",
   authenticateToken,
@@ -53,12 +53,11 @@ router.post(
   }
 );
 
-// Retrieve Orders for Customers "URL Card"
+// Retrieve order request for Customers "URL Card"
 router.get("/", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
 
   try {
-    // Fetch orders for the authenticated user
     const { data: orders, error } = await supabase
       .from("orders")
       .select("*")
@@ -78,7 +77,7 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Dashboard: Retrieve Orders
+// Admin Dashboard: Retrieve order request
 router.get("/admin/orders", authenticateToken, async (req, res) => {
   try {
     // Join orders with users to get username and email
@@ -102,7 +101,7 @@ router.get("/admin/orders", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Panel/Dashboard: Review and send Offer to customers
+// Admin Dashboard: Review and send offer(approved order request) to customers
 router.put("/:id/offer", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const {
@@ -151,7 +150,7 @@ router.put("/:id/offer", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Dashboard: Reject Order
+// Admin Dashboard: Reject order request
 router.put("/:id/reject", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
@@ -181,14 +180,17 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
   }
 });
 
-// Customer accepts the offer
+// Customer accepts the offer(approved order request) from Admin
 router.put("/:id/accept", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
     const { data, error } = await supabase
       .from("orders")
-      .update({ admin_status: "offer_accepted" })
+      .update({
+        offer_status: "accepted",
+        offer_response_at: new Date(),
+      })
       .eq("order_id", id)
       .select();
 
@@ -203,19 +205,22 @@ router.put("/:id/accept", authenticateToken, async (req, res) => {
 
     res.status(200).json({ message: "Offer accepted.", order: data[0] });
   } catch (error) {
-    console.error("Accept error:", error);
+    console.error("Accept offer error:", error);
     res.status(500).json({ message: "Server error." });
   }
 });
 
-// Customer rejects the offer
+// Customer rejects the offer(approved order request) from Admin
 router.put("/:id/reject", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
     const { data, error } = await supabase
       .from("orders")
-      .update({ admin_status: "offer_rejected" })
+      .update({
+        offer_status: "rejected",
+        offer_response_at: new Date(),
+      })
       .eq("order_id", id)
       .select();
 
@@ -230,7 +235,7 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
 
     res.status(200).json({ message: "Offer rejected.", order: data[0] });
   } catch (error) {
-    console.error("Reject error:", error);
+    console.error("Reject offer error:", error);
     res.status(500).json({ message: "Server error." });
   }
 });
