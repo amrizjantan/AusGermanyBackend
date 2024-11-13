@@ -210,32 +210,34 @@ router.put("/:id/accept", authenticateToken, async (req, res) => {
   }
 });
 
-// Customer rejects the offer(approved order request) from Admin
-router.put("/:id/reject", authenticateToken, async (req, res) => {
+// Customer declines the offer (approved order request) from Admin
+router.put("/:id/decline", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
     const { data, error } = await supabase
       .from("orders")
       .update({
-        offer_status: "rejected",
+        offer_status: "declined", // Updated status for declining offer
         offer_response_at: new Date(),
       })
       .eq("order_id", id)
       .select();
 
     if (error) {
-      console.error("Error rejecting offer:", error);
-      return res.status(500).json({ message: "Failed to reject offer", error });
+      console.error("Error declining offer:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to decline offer", error });
     }
 
     if (data.length === 0) {
       return res.status(404).json({ message: "Order not found." });
     }
 
-    res.status(200).json({ message: "Offer rejected.", order: data[0] });
+    res.status(200).json({ message: "Offer declined.", order: data[0] });
   } catch (error) {
-    console.error("Reject offer error:", error);
+    console.error("Decline offer error:", error);
     res.status(500).json({ message: "Server error." });
   }
 });
