@@ -17,7 +17,6 @@ router.post(
   async (req, res) => {
     const { title, description, price, category } = req.body;
 
-    // Validate that all required fields are present
     if (
       !title ||
       !description ||
@@ -35,7 +34,6 @@ router.post(
     const itemCategory = category || "Others";
 
     try {
-      // Process and upload images to Supabase
       const imageUploadPromises = req.files.map(async (file) => {
         const uniqueFileName = `${Date.now()}-${file.originalname}`;
 
@@ -54,14 +52,11 @@ router.post(
           );
         }
 
-        // Return the full URL of the uploaded image
         return `https://obpujqjuhucirpkdqidf.supabase.co/storage/v1/object/public/${data.path}`;
       });
 
-      // Await the image upload promises
       const uploadedImageUrls = await Promise.all(imageUploadPromises);
 
-      // Insert data into Supabase database
       const { error: databaseInsertError } = await supabase
         .from("uploads")
         .insert([
@@ -75,7 +70,6 @@ router.post(
           },
         ]);
 
-      // If insertion fails, delete the uploaded images from storage
       if (databaseInsertError) {
         const { error: storageDeleteError } = await supabase.storage
           .from("uploads")
@@ -105,7 +99,7 @@ router.post(
   }
 );
 
-// Route to retrieve all uploads for admin dashboard
+// Admin: Retrieve all uploads
 router.get("/admin/uploads", authenticateToken, async (req, res) => {
   try {
     const { data: uploads, error } = await supabase.from("uploads").select(`
@@ -137,7 +131,7 @@ router.get("/admin/uploads", authenticateToken, async (req, res) => {
   }
 });
 
-// Update to approve upload
+// Admin: Update + approve upload request
 router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
   const { uploadId } = req.params;
   const { postal_fee, service_fee, description, total_amount } = req.body;
@@ -176,7 +170,7 @@ router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
   }
 });
 
-// Reject upload route
+// Admin: Reject upload request
 router.put("/:id/reject", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
@@ -208,7 +202,7 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
   }
 });
 
-// Update fees for an upload
+// Admin: Update fees
 router.put("/:id/fees", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { postal_fee, service_fee, total_amount } = req.body;
@@ -245,7 +239,7 @@ router.put("/:id/fees", authenticateToken, async (req, res) => {
   }
 });
 
-// Retrieve all approved uploads
+// Marketplace: (Public view) - Retrieve all approved uploads
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const { data: uploads, error } = await supabase
@@ -267,32 +261,26 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Retrieve upload by ID
-router.get("/:uploadId", async (req, res) => {
-  const { uploadId } = req.params;
-
+// Customer: Retrieve only their own uploads based on user_id
+router.get("/customer", authenticateToken, async (req, res) => {
+  const { user_id } = req.user;
   try {
-    const { data, error } = await supabase
+    const { data: uploads, error } = await supabase
       .from("uploads")
       .select("*")
-      .eq("upload_id", uploadId)
-      .single();
+      .eq("user_id", user_id);
 
     if (error) {
-      console.error("Error retrieving upload:", error);
+      console.error("Error retrieving uploads:", error);
       return res
         .status(500)
-        .json({ message: "Failed to retrieve upload", error });
+        .json({ message: "Failed to retrieve uploads", error });
     }
 
-    if (!data) {
-      return res.status(404).json({ message: "Upload not found." });
-    }
-
-    res.status(200).json(data);
+    res.status(200).json({ uploads });
   } catch (error) {
-    console.error("Error fetching upload:", error);
-    return res.status(500).json({ message: "Server error.", error });
+    console.error("Error retrieving uploads:", error);
+    return res.status(500).json({ message: "Server error", error });
   }
 });
 
