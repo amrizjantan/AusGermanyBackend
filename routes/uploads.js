@@ -261,7 +261,7 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Customer: Retrieve only their own uploads based on user_id
+// Customer Dashboard: Retrieve only their own uploads based on user_id
 router.get("/customer", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
   try {
@@ -281,6 +281,35 @@ router.get("/customer", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Error retrieving uploads:", error);
     return res.status(500).json({ message: "Server error", error });
+  }
+});
+
+// Marketplace: (Public view) - Retrieve a single upload by its ID
+router.get("/:uploadId", async (req, res) => {
+  const { uploadId } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from("uploads")
+      .select("*")
+      .eq("upload_id", uploadId)
+      .single();
+
+    if (error) {
+      console.error("Error retrieving upload:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to retrieve upload", error });
+    }
+
+    if (!data) {
+      return res.status(404).json({ message: "Upload not found." });
+    }
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching upload:", error);
+    return res.status(500).json({ message: "Server error.", error });
   }
 });
 
