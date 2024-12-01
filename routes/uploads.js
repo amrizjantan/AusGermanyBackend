@@ -313,4 +313,60 @@ router.get("/:uploadId", async (req, res) => {
   }
 });
 
+// Marketplace: (Public view) Toggle favourite (like/unlike)
+router.put("/:uploadId/like", authenticateToken, async (req, res) => {
+  const { uploadId } = req.params;
+  const userId = req.user.user_id;
+
+  try {
+    const { data: existingData, error: fetchError } = await supabase
+      .from("uploads")
+      .select("favourites")
+      .eq("upload_id", uploadId)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching existing favourites:", fetchError);
+      return res.status(500).json({
+        message: "Failed to fetch existing favourites",
+        error: fetchError,
+      });
+    }
+
+    const currentFavourites = existingData?.favourites || [];
+
+    const userIndex = currentFavourites.indexOf(userId);
+
+    if (userIndex === -1) {
+      currentFavourites.push(userId);
+    } else {
+      currentFavourites.splice(userIndex, 1);
+    }
+
+    const { data, error } = await supabase
+      .from("uploads")
+      .update({ favourites: currentFavourites })
+      .eq("upload_id", uploadId)
+      .select();
+
+    if (error) {
+      console.error("Error updating favourites:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to update favourites.", error });
+    }
+
+    res.status(200).json({
+      message:
+        userIndex === -1
+          ? "Item liked successfully."
+          : "Item unliked successfully.",
+      item: data[0],
+    });
+  } catch (error) {
+    console.error("Error toggling like:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
 export default router;
