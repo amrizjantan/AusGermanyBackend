@@ -261,23 +261,71 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Customer Dashboard: Retrieve only their own uploads based on user_id
+// // Customer Dashboard: Retrieve only their own uploads based on user_id
+// router.get("/customer", authenticateToken, async (req, res) => {
+//   const { user_id } = req.user;
+//   try {
+//     const { data: uploads, error } = await supabase
+//       .from("uploads")
+//       .select("*")
+//       .eq("user_id", user_id);
+
+//     if (error) {
+//       console.error("Error retrieving uploads:", error);
+//       return res
+//         .status(500)
+//         .json({ message: "Failed to retrieve uploads", error });
+//     }
+
+//     res.status(200).json({ uploads });
+//   } catch (error) {
+//     console.error("Error retrieving uploads:", error);
+//     return res.status(500).json({ message: "Server error", error });
+//   }
+// });
+
+//TEST
+// Customer Dashboard: Retrieve own uploads or both own and liked uploads
+// Customer Dashboard: Retrieve own uploads or both own and liked uploads
 router.get("/customer", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
+
   try {
-    const { data: uploads, error } = await supabase
+    // Fetch the user's own uploads
+    const { data: ownUploads, error: ownUploadsError } = await supabase
       .from("uploads")
       .select("*")
       .eq("user_id", user_id);
 
-    if (error) {
-      console.error("Error retrieving uploads:", error);
-      return res
-        .status(500)
-        .json({ message: "Failed to retrieve uploads", error });
+    if (ownUploadsError) {
+      console.error("Error retrieving own uploads:", ownUploadsError);
+      return res.status(500).json({
+        message: "Failed to retrieve own uploads",
+        error: ownUploadsError,
+      });
     }
 
-    res.status(200).json({ uploads });
+    // Check if we should also fetch the liked uploads
+    if (req.query.includeLiked === "true") {
+      const { data: likedUploads, error: likedUploadsError } = await supabase
+        .from("uploads")
+        .select("*")
+        .contains("favourites", [user_id]); // Fetch liked uploads where user_id is in 'favourites'
+
+      if (likedUploadsError) {
+        console.error("Error retrieving liked uploads:", likedUploadsError);
+        return res.status(500).json({
+          message: "Failed to retrieve liked uploads",
+          error: likedUploadsError,
+        });
+      }
+
+      // Return both own uploads and liked uploads
+      return res.status(200).json({ ownUploads, likedUploads });
+    }
+
+    // Default case: return only the own uploads
+    res.status(200).json({ ownUploads });
   } catch (error) {
     console.error("Error retrieving uploads:", error);
     return res.status(500).json({ message: "Server error", error });
