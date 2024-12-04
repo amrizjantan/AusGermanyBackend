@@ -261,31 +261,6 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// // Customer Dashboard: Retrieve only their own uploads based on user_id
-// router.get("/customer", authenticateToken, async (req, res) => {
-//   const { user_id } = req.user;
-//   try {
-//     const { data: uploads, error } = await supabase
-//       .from("uploads")
-//       .select("*")
-//       .eq("user_id", user_id);
-
-//     if (error) {
-//       console.error("Error retrieving uploads:", error);
-//       return res
-//         .status(500)
-//         .json({ message: "Failed to retrieve uploads", error });
-//     }
-
-//     res.status(200).json({ uploads });
-//   } catch (error) {
-//     console.error("Error retrieving uploads:", error);
-//     return res.status(500).json({ message: "Server error", error });
-//   }
-// });
-
-//TEST
-// Customer Dashboard: Retrieve own uploads or both own and liked uploads
 // Customer Dashboard: Retrieve own uploads or both own and liked uploads
 router.get("/customer", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
@@ -305,13 +280,11 @@ router.get("/customer", authenticateToken, async (req, res) => {
       });
     }
 
-    // Check if we should also fetch the liked uploads
     if (req.query.includeLiked === "true") {
       const { data: likedUploads, error: likedUploadsError } = await supabase
         .from("uploads")
         .select("*")
-        .contains("favourites", [user_id]); // Fetch liked uploads where user_id is in 'favourites'
-
+        .contains("favourites", [user_id]);
       if (likedUploadsError) {
         console.error("Error retrieving liked uploads:", likedUploadsError);
         return res.status(500).json({
@@ -320,11 +293,9 @@ router.get("/customer", authenticateToken, async (req, res) => {
         });
       }
 
-      // Return both own uploads and liked uploads
       return res.status(200).json({ ownUploads, likedUploads });
     }
 
-    // Default case: return only the own uploads
     res.status(200).json({ ownUploads });
   } catch (error) {
     console.error("Error retrieving uploads:", error);
@@ -414,6 +385,40 @@ router.put("/:uploadId/like", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Error toggling like:", error);
     res.status(500).json({ message: "Server error", error });
+  }
+});
+
+// User Dashbord: Users withdraw an upload
+router.put("/:uploadId/withdraw", authenticateToken, async (req, res) => {
+  const { uploadId } = req.params;
+  const userId = req.user.user_id;
+
+  try {
+    const { data, error } = await supabase
+      .from("uploads")
+      .update({ admin_status: "withdrawn" })
+      .eq("upload_id", uploadId)
+      .eq("user_id", userId)
+      .select();
+
+    if (error) {
+      console.error("Error withdrawing upload:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to withdraw upload.", error });
+    }
+
+    if (!data.length) {
+      return res.status(404).json({ message: "Upload not found." });
+    }
+
+    res.status(200).json({
+      message: "Upload withdrawn successfully.",
+      upload: data[0],
+    });
+  } catch (error) {
+    console.error("Error withdrawing upload:", error);
+    res.status(500).json({ message: "Server error.", error });
   }
 });
 
