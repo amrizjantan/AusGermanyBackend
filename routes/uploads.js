@@ -52,7 +52,7 @@ router.post(
           );
         }
 
-        return `https://obpujqjuhucirpkdqidf.supabase.co/storage/v1/object/public/${data.path}`;
+        return `https://obpujqjuhucirpkdqidf.supabase.co/storage/v1/object/public/uploads/${data.path}`;
       });
 
       const uploadedImageUrls = await Promise.all(imageUploadPromises);
