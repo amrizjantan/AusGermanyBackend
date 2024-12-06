@@ -96,17 +96,18 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Fetch user data from the database
     const { error, data } = await supabase
       .from("users")
-      .select("user_id, username, password, user_type")
+      .select("user_id, username, password, user_type, email, created_at")
       .eq("email", email);
 
     if (error) {
       throw new Error(JSON.stringify(error));
     }
 
-    if (!data[0]?.user_id) {
-      console.error(error);
+    // Check if user exists
+    if (!data || data.length === 0) {
       return res.status(400).json({ message: "Invalid email" });
     }
 
@@ -115,25 +116,29 @@ router.post("/login", async (req, res) => {
       username,
       password: encryptedPassword,
       user_type,
+      email: dbEmail, // Avoid naming conflict, Email from database
+      created_at,
     } = data[0];
 
+    // Verify password
     const isCorrectPassword = await bcrypt.compare(password, encryptedPassword);
     if (!isCorrectPassword) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
+    // Generate JWT
     const token = jwt.sign(
-      { user_id, username, user_type },
+      { user_id, username, user_type, email: dbEmail },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "1h",
-      }
+      { expiresIn: "1h" }
     );
 
     res.status(200).json({
       user_id,
       username,
       user_type,
+      email: dbEmail,
+      created_at,
       token,
       message: "Logged in successfully",
     });
