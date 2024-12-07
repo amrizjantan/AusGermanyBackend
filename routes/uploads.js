@@ -15,25 +15,28 @@ router.post(
   authorizeUserType(["both"]),
   upload.array("images"),
   async (req, res) => {
-    const { title, description, price, category } = req.body;
+    const { title, description, price, category, condition } = req.body; // Ensure condition is destructured
 
+    // Check if all required fields (including condition) are present
     if (
       !title ||
       !description ||
       !price ||
       !category ||
+      !condition || // Ensure condition is included
       !req.files ||
       req.files.length === 0
     ) {
       return res.status(400).json({
         message:
-          "All fields (title, description, price, category) are required, and at least one image must be uploaded.",
+          "All fields (title, description, price, category, condition) are required, and at least one image must be uploaded.",
       });
     }
 
     const itemCategory = category || "Others";
 
     try {
+      // Upload images to Supabase storage
       const imageUploadPromises = req.files.map(async (file) => {
         const uniqueFileName = `${Date.now()}-${file.originalname}`;
 
@@ -57,6 +60,7 @@ router.post(
 
       const uploadedImageUrls = await Promise.all(imageUploadPromises);
 
+      // Insert item info into the database, including condition
       const { error: databaseInsertError } = await supabase
         .from("uploads")
         .insert([
@@ -64,6 +68,7 @@ router.post(
             title,
             description,
             price,
+            condition, // Include condition in the database insert
             images: uploadedImageUrls,
             user_id: req.user.user_id,
             category: itemCategory,
@@ -103,19 +108,20 @@ router.post(
 router.get("/admin/uploads", authenticateToken, async (req, res) => {
   try {
     const { data: uploads, error } = await supabase.from("uploads").select(`
-        upload_id,
-        user_id,
-        images,
-        title,
-        description,
-        price,
-        postal_fee,
-        service_fee,
-        total_amount,
-        admin_status,
-        category,
-        users(username, email)
-      `);
+      upload_id,
+      user_id,
+      images,
+      title,
+      description,
+      price,
+      postal_fee,
+      service_fee,
+      total_amount,
+      admin_status,
+      category,
+      condition,  
+      users(username, email)
+    `);
 
     if (error) {
       console.error("Error retrieving uploads:", error);
