@@ -120,7 +120,9 @@ router.get("/admin/uploads", authenticateToken, async (req, res) => {
       admin_status,
       category,
       condition,  
-      users(username, email)
+      users(username, email),
+      translated_title,
+      translated_description 
     `);
 
     if (error) {
@@ -140,7 +142,14 @@ router.get("/admin/uploads", authenticateToken, async (req, res) => {
 // Admin: Update + approve upload request
 router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
   const { uploadId } = req.params;
-  const { postal_fee, service_fee, description, total_amount } = req.body;
+  const {
+    postal_fee,
+    service_fee,
+    description,
+    total_amount,
+    translated_title,
+    translated_description,
+  } = req.body;
 
   try {
     const { data, error } = await supabase
@@ -151,6 +160,8 @@ router.put("/:uploadId/approve", authenticateToken, async (req, res) => {
         description,
         total_amount,
         admin_status: "approved",
+        translated_title,
+        translated_description,
       })
       .eq("upload_id", uploadId)
       .select();
