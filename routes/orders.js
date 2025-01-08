@@ -5,15 +5,13 @@ import authenticateToken from "../middleware/authenticateToken.js";
 
 const router = Router();
 
-// Customers send URL , make order request
+// Customer sends order request
 router.post(
   "/",
   authenticateToken,
   [
     check("url", "URL is required").isURL(),
-    check("title", "Title is required").notEmpty(),
-    check("price", "Price must be a valid number").isFloat({ locale: "de-DE" }),
-    check("description", "Description is required").notEmpty(),
+    check("description").optional().isString(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -21,31 +19,31 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    let { url, title, price, description } = req.body;
+    const { url, title, description } = req.body;
     const { user_id } = req.user;
 
     try {
-      price = parseFloat(price.replace(",", "."));
-
       const { data, error } = await supabase
         .from("orders")
-        .insert([{ user_id, url, title, price, description }])
+        .insert([
+          {
+            user_id,
+            url,
+            title: title || null,
+            description: description || null,
+          },
+        ])
         .select();
-
-      if (error?.code === "23505") {
-        return res.status(400).json({
-          message: "An order of yours with the same Item URL already exists.",
-        });
-      }
 
       if (error) {
         console.error("Error saving order:", error);
         return res.status(500).json({ message: "Failed to save order", error });
       }
 
-      res
-        .status(201)
-        .json({ message: "Order saved successfully", order: data[0] });
+      res.status(201).json({
+        message: "Order saved successfully",
+        order: data[0],
+      });
     } catch (error) {
       console.error("Error saving order:", error);
       res.status(500).json({ message: "Server error", error });
@@ -101,7 +99,7 @@ router.get("/admin/orders", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin Dashboard: Review and send offer(approved order request) to customers
+// Admin Dashboard: Review and send offer (approved order request) to customers
 router.put("/:id/offer", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const {
@@ -180,7 +178,7 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
   }
 });
 
-// Customer accepts the offer(approved order request) from Admin
+// Customer accepts the offer (approved order request) from Admin
 router.put("/:id/accept", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
