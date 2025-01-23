@@ -259,16 +259,22 @@ router.put("/:id/fees", authenticateToken, async (req, res) => {
 // Marketplace: (Public view) - Retrieve all approved uploads
 router.get("/", authenticateToken, async (req, res) => {
   try {
+    // Add condition to filter out items that are sold
     const { data: uploads, error } = await supabase
       .from("uploads")
       .select("*")
-      .eq("admin_status", "approved");
+      .eq("admin_status", "approved") // Ensure item is approved
+      .eq("is_sold", false); // Only fetch items that are not sold
 
     if (error) {
       console.error("Error retrieving approved uploads:", error);
       return res
         .status(500)
         .json({ message: "Failed to retrieve uploads", error });
+    }
+
+    if (uploads.length === 0) {
+      return res.status(200).json({ message: "No items available." });
     }
 
     res.status(200).json({ uploads });
@@ -435,6 +441,82 @@ router.put("/:uploadId/withdraw", authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error("Error withdrawing upload:", error);
+    res.status(500).json({ message: "Server error.", error });
+  }
+});
+
+// Marketplace: (Public view) when user buys item
+router.put("/:uploadId/sold", authenticateToken, async (req, res) => {
+  const { uploadId } = req.params;
+
+  try {
+    console.log("Attempting to mark as sold:", uploadId);
+
+    // Fetch the upload to verify that it exists and has the correct is_sold status
+    const { data: upload, error: fetchError } = await supabase
+      .from("uploads")
+      .select("upload_id, is_sold, user_id")
+      .eq("upload_id", uploadId)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching upload:", fetchError);
+      return res
+        .status(500)
+        .json({ message: "Failed to fetch upload", error: fetchError });
+    }
+
+    if (!upload) {
+      console.error("Upload not found with uploadId:", uploadId);
+      return res.status(404).json({ message: "Upload not found." });
+    }
+
+    console.log("Upload found:", upload);
+
+    // Ensure the item is not already sold
+    if (upload.is_sold) {
+      return res
+        .status(400)
+        .json({ message: "This item is already marked as sold." });
+    }
+
+    // If the user is not the owner of the upload, reject the request
+    if (upload.user_id !== req.user.user_id) {
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to mark this item as sold." });
+    }
+
+    // Update the upload to mark it as sold
+    const { data, error: updateError } = await supabase
+      .from("uploads")
+      .update({ is_sold: true })
+      .eq("upload_id", uploadId)
+      .select();
+
+    if (updateError) {
+      console.error("Error updating upload to mark as sold:", updateError);
+      return res.status(500).json({
+        message: "Failed to mark upload as sold.",
+        error: updateError,
+      });
+    }
+
+    if (data.length === 0) {
+      console.error("Failed to update upload. No data returned.");
+      return res
+        .status(404)
+        .json({ message: "Failed to mark upload as sold. Item not found." });
+    }
+
+    console.log("Upload marked as sold:", data[0]);
+
+    res.status(200).json({
+      message: "Upload marked as sold successfully.",
+      upload: data[0],
+    });
+  } catch (error) {
+    console.error("Error in marking upload as sold:", error);
     res.status(500).json({ message: "Server error.", error });
   }
 });
