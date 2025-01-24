@@ -256,15 +256,18 @@ router.put("/:id/fees", authenticateToken, async (req, res) => {
   }
 });
 
-// Marketplace: (Public view) - Retrieve all approved uploads
+// Marketplace: (Public view) - Retrieve all approved uploads excluding user's own uploads
 router.get("/", authenticateToken, async (req, res) => {
+  const userId = req.user.user_id; // Get the current user's ID from the request
+
   try {
-    // Add condition to filter out items that are sold
+    // Add condition to filter out items that are sold, and exclude the current user's uploads
     const { data: uploads, error } = await supabase
       .from("uploads")
       .select("*")
-      .eq("admin_status", "approved") // Ensure item is approved
-      .eq("is_sold", false); // Only fetch items that are not sold
+      .eq("admin_status", "approved")
+      .eq("is_sold", false) // Only fetch items that are not sold
+      .neq("user_id", userId); // Exclude uploads by the current user
 
     if (error) {
       console.error("Error retrieving approved uploads:", error);
@@ -475,19 +478,19 @@ router.put("/:uploadId/sold", authenticateToken, async (req, res) => {
 
     // Ensure the item is not already sold
     if (upload.is_sold) {
+      console.log("Item is already marked as sold.");
       return res
         .status(400)
         .json({ message: "This item is already marked as sold." });
     }
 
-    // If the user is not the owner of the upload, reject the request
-    if (upload.user_id !== req.user.user_id) {
-      return res
-        .status(403)
-        .json({ message: "You are not authorized to mark this item as sold." });
+    // Ensure the user trying to mark the item as sold is NOT the owner of the item
+    if (upload.user_id === req.user.user_id) {
+      console.log("User cannot buy their own item.");
+      return res.status(400).json({ message: "You cannot buy your own item." });
     }
 
-    // Update the upload to mark it as sold
+    // Proceed with the update
     const { data, error: updateError } = await supabase
       .from("uploads")
       .update({ is_sold: true })
@@ -497,19 +500,19 @@ router.put("/:uploadId/sold", authenticateToken, async (req, res) => {
     if (updateError) {
       console.error("Error updating upload to mark as sold:", updateError);
       return res.status(500).json({
-        message: "Failed to mark upload as sold.",
+        message: "User cannot buy their own item.",
         error: updateError,
       });
     }
 
-    if (data.length === 0) {
-      console.error("Failed to update upload. No data returned.");
+    if (!data || data.length === 0) {
+      console.error("No data returned after the update.");
       return res
         .status(404)
         .json({ message: "Failed to mark upload as sold. Item not found." });
     }
 
-    console.log("Upload marked as sold:", data[0]);
+    console.log("Upload marked as sold successfully:", data[0]);
 
     res.status(200).json({
       message: "Upload marked as sold successfully.",
@@ -518,6 +521,37 @@ router.put("/:uploadId/sold", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Error in marking upload as sold:", error);
     res.status(500).json({ message: "Server error.", error });
+  }
+});
+
+//Payment
+router.get("/completed", authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  console.log("DEBUG: userId received from req.user:", userId); // Add this
+
+  try {
+    const { data, error } = await supabase
+      .from("uploads")
+      .select("*")
+      .eq("user_id", userId) // Ensure this is a valid UUID
+      .eq("is_sold", true);
+
+    if (error) {
+      console.error("Error fetching completed uploads:", error);
+      return res
+        .status(500)
+        .json({ message: "Error fetching completed uploads", error });
+    }
+
+    if (data.length === 0) {
+      return res.status(404).json({ message: "No completed uploads found." });
+    }
+
+    return res.status(200).json({ completedItems: data });
+  } catch (error) {
+    console.error("Error retrieving completed uploads:", error);
+    return res.status(500).json({ message: "Server error", error });
   }
 });
 
