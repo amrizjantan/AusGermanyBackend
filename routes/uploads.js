@@ -251,6 +251,7 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 // Customer Dashboard: Retrieve own uploads or both own and liked uploads
+// Customer Dashboard: Retrieve own uploads or both own and liked uploads
 router.get("/customer", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
 
@@ -274,6 +275,7 @@ router.get("/customer", authenticateToken, async (req, res) => {
         .from("uploads")
         .select("*")
         .contains("favourites", [user_id]);
+
       if (likedUploadsError) {
         console.error("Error retrieving liked uploads:", likedUploadsError);
         return res.status(500).json({
@@ -282,7 +284,16 @@ router.get("/customer", authenticateToken, async (req, res) => {
         });
       }
 
-      return res.status(200).json({ ownUploads, likedUploads });
+      // Mark sold items and whether the user bought them
+      const updatedLikedUploads = likedUploads.map((upload) => ({
+        ...upload,
+        isSold: upload.bought_by ? true : false, // Flag if the item is sold
+        isBoughtByUser: upload.bought_by === user_id, // Check if this item was bought by the current user
+      }));
+
+      return res
+        .status(200)
+        .json({ ownUploads, likedUploads: updatedLikedUploads });
     }
 
     res.status(200).json({ ownUploads });
