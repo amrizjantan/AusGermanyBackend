@@ -443,6 +443,53 @@ router.put("/:uploadId/buy", authenticateToken, async (req, res) => {
       .json({ message: "Server error while processing purchase.", error });
   }
 });
+// Marketplace: Mark an item as un-bought (clear the bought_by field)
+router.put("/:uploadId/unbuy", authenticateToken, async (req, res) => {
+  const { uploadId } = req.params;
+
+  try {
+    // Fetch the current item to check if it has a buyer
+    const { data: item, error: fetchError } = await supabase
+      .from("uploads")
+      .select("bought_by")
+      .eq("upload_id", uploadId)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching item:", fetchError);
+      return res
+        .status(500)
+        .json({ message: "Failed to fetch item", error: fetchError });
+    }
+
+    if (!item || !item.bought_by) {
+      return res.status(400).json({ message: "This item hasn't been bought." });
+    }
+
+    // Clear the bought_by field to indicate the item is un-bought
+    const { error: updateError } = await supabase
+      .from("uploads")
+      .update({ bought_by: null, bought_at: null }) // Clear bought_by and bought_at
+      .eq("upload_id", uploadId);
+
+    if (updateError) {
+      console.error("Error updating item:", updateError);
+      return res
+        .status(500)
+        .json({ message: "Failed to update item", error: updateError });
+    }
+
+    res.status(200).json({ message: "Item has been un-bought successfully." });
+  } catch (error) {
+    console.error("Error processing un-buy:", error);
+    return res
+      .status(500)
+      .json({
+        message: "Server error while processing un-buy",
+        error: error.message,
+      });
+  }
+});
 
 // Marketplace: Retrieve bought items for the authenticated user
 router.get("/customer/bought", authenticateToken, async (req, res) => {
