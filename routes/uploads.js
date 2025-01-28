@@ -338,7 +338,7 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Customer Dashboard: Retrieve own uploads or both own and liked uploads
+// Customer Liked-Items: Retrieve liked items
 router.get("/customer", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
 
@@ -357,6 +357,14 @@ router.get("/customer", authenticateToken, async (req, res) => {
       });
     }
 
+    // Modify the status of withdrawn items to "withdrawn by seller"
+    const updatedOwnUploads = ownUploads.map((upload) => {
+      if (upload.admin_status === "withdrawn") {
+        return { ...upload, admin_status: "withdrawn by seller" };
+      }
+      return upload;
+    });
+
     if (req.query.includeLiked === "true") {
       const { data: likedUploads, error: likedUploadsError } = await supabase
         .from("uploads")
@@ -371,19 +379,28 @@ router.get("/customer", authenticateToken, async (req, res) => {
         });
       }
 
+      // Modify the status of withdrawn liked uploads to "withdrawn by seller"
+      const updatedLikedUploads = likedUploads.map((upload) => {
+        if (upload.admin_status === "withdrawn") {
+          return { ...upload, admin_status: "withdrawn by seller" };
+        }
+        return upload;
+      });
+
       // Mark sold items and whether the user bought them
-      const updatedLikedUploads = likedUploads.map((upload) => ({
+      const finalLikedUploads = updatedLikedUploads.map((upload) => ({
         ...upload,
         isSold: upload.bought_by ? true : false, // Flag if the item is sold
         isBoughtByUser: upload.bought_by === user_id, // Check if this item was bought by the current user
       }));
 
-      return res
-        .status(200)
-        .json({ ownUploads, likedUploads: updatedLikedUploads });
+      return res.status(200).json({
+        ownUploads: updatedOwnUploads,
+        likedUploads: finalLikedUploads,
+      });
     }
 
-    res.status(200).json({ ownUploads });
+    res.status(200).json({ ownUploads: updatedOwnUploads });
   } catch (error) {
     console.error("Error retrieving uploads:", error);
     return res.status(500).json({ message: "Server error", error });
