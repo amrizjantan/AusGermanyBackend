@@ -218,6 +218,94 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Server error.", error });
   }
 });
+// User Dashboard: Users withdraw an upload
+router.put("/:uploadId/withdraw", authenticateToken, async (req, res) => {
+  const { uploadId } = req.params;
+  const userId = req.user.user_id; // Get the user ID from the authenticated user
+
+  try {
+    // Retrieve the upload from the database
+    const { data: upload, error: fetchError } = await supabase
+      .from("uploads")
+      .select("*")
+      .eq("upload_id", uploadId)
+      .eq("user_id", userId) // Ensure it's the correct user
+      .single();
+
+    if (fetchError) {
+      return res.status(500).json({ message: "Error fetching upload." });
+    }
+
+    // Check if the item has been sold (bought_by is populated)
+    if (upload?.bought_by) {
+      return res.status(400).json({
+        message: "This item has already been sold and cannot be withdrawn.",
+      });
+    }
+
+    // Proceed to update the upload's status to withdrawn
+    const { data, error } = await supabase
+      .from("uploads")
+      .update({ admin_status: "withdrawn" })
+      .eq("upload_id", uploadId)
+      .eq("user_id", userId) // Ensure the user is the owner
+      .select();
+
+    if (error) {
+      console.error("Error withdrawing upload:", error);
+      return res.status(500).json({ message: "Failed to withdraw upload." });
+    }
+
+    if (!data?.length) {
+      return res.status(404).json({ message: "Upload not found." });
+    }
+
+    res.status(200).json({
+      message: "Upload withdrawn successfully.",
+      upload: data[0],
+    });
+  } catch (error) {
+    console.error("Error withdrawing upload:", error);
+    res.status(500).json({ message: "Server error.", error });
+  }
+});
+
+// Admin: Update fees
+router.put("/:id/fees", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { postal_fee, service_fee, total_amount } = req.body;
+
+  if (postal_fee == null || service_fee == null || total_amount == null) {
+    return res.status(400).json({
+      message: "postal_fee, service_fee, and total_amount are required.",
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("uploads")
+      .update({ postal_fee, service_fee, total_amount })
+      .eq("upload_id", id)
+      .select();
+
+    if (error) {
+      console.error("Error updating fees:", error);
+      return res.status(500).json({ message: "Failed to update fees", error });
+    }
+
+    if (!data?.length) {
+      return res.status(404).json({ message: "Upload not found." });
+    }
+
+    res.status(200).json({
+      message: "Fees updated successfully.",
+      upload: data[0],
+    });
+  } catch (error) {
+    console.error("Update fees error:", error);
+    res.status(500).json({ message: "Server error.", error });
+  }
+});
 
 // Marketplace: (Public view) - Retrieve all approved uploads excluding user's own uploads and sold item
 router.get("/", authenticateToken, async (req, res) => {
@@ -250,7 +338,6 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Customer Dashboard: Retrieve own uploads or both own and liked uploads
 // Customer Dashboard: Retrieve own uploads or both own and liked uploads
 router.get("/customer", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
@@ -388,7 +475,6 @@ router.put("/:uploadId/like", authenticateToken, async (req, res) => {
   }
 });
 
-// Marketplace: Mark an item as sold and update bought_by with the buyer's UUID
 // Marketplace: Mark an item as sold and update bought_by with the buyer's UUID
 router.put("/:uploadId/buy", authenticateToken, async (req, res) => {
   const { uploadId } = req.params;
