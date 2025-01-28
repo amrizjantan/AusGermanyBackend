@@ -389,6 +389,7 @@ router.put("/:uploadId/like", authenticateToken, async (req, res) => {
 });
 
 // Marketplace: Mark an item as sold and update bought_by with the buyer's UUID
+// Marketplace: Mark an item as sold and update bought_by with the buyer's UUID
 router.put("/:uploadId/buy", authenticateToken, async (req, res) => {
   const { uploadId } = req.params;
   const { buyer_uuid } = req.body; // buyer_uuid is now passed in the request body
@@ -398,10 +399,10 @@ router.put("/:uploadId/buy", authenticateToken, async (req, res) => {
   }
 
   try {
-    // Fetch the current item details to check if it's already bought
+    // Fetch the current item details to check if it's already bought and also get the uploader's user_id
     const { data: item, error: fetchError } = await supabase
       .from("uploads")
-      .select("bought_by")
+      .select("bought_by, user_id") // Fetch both the bought_by and user_id of the uploader
       .eq("upload_id", uploadId)
       .single();
 
@@ -410,6 +411,14 @@ router.put("/:uploadId/buy", authenticateToken, async (req, res) => {
       return res
         .status(500)
         .json({ message: "Failed to fetch item.", error: fetchError });
+    }
+
+    console.log("Item Data:", item); // Debugging log to see the item data
+
+    // Check if the logged-in user is the same as the uploader
+    if (item.user_id === req.user.user_id) {
+      console.log("User is trying to buy their own item"); // Debugging log
+      return res.status(400).json({ message: "You cannot buy your own item." });
     }
 
     // If bought_by already has a value, the item has already been purchased
@@ -443,6 +452,7 @@ router.put("/:uploadId/buy", authenticateToken, async (req, res) => {
       .json({ message: "Server error while processing purchase.", error });
   }
 });
+
 // Marketplace: Mark an item as un-bought (clear the bought_by field)
 router.put("/:uploadId/unbuy", authenticateToken, async (req, res) => {
   const { uploadId } = req.params;
@@ -482,12 +492,10 @@ router.put("/:uploadId/unbuy", authenticateToken, async (req, res) => {
     res.status(200).json({ message: "Item has been un-bought successfully." });
   } catch (error) {
     console.error("Error processing un-buy:", error);
-    return res
-      .status(500)
-      .json({
-        message: "Server error while processing un-buy",
-        error: error.message,
-      });
+    return res.status(500).json({
+      message: "Server error while processing un-buy",
+      error: error.message,
+    });
   }
 });
 
