@@ -15,7 +15,7 @@ router.post(
   authorizeUserType(["both"]),
   upload.array("images"),
   async (req, res) => {
-    const { title, description, price, category, condition } = req.body; // Ensure condition is destructured
+    const { title, description, price, category, condition } = req.body;
 
     // Check if all required fields (including condition) are present
     if (
@@ -23,7 +23,7 @@ router.post(
       !description ||
       !price ||
       !category ||
-      !condition || // Ensure condition is included
+      !condition ||
       !req.files ||
       req.files.length === 0
     ) {
@@ -68,7 +68,7 @@ router.post(
             title,
             description,
             price,
-            condition, // Include condition in the database insert
+            condition,
             images: uploadedImageUrls,
             user_id: req.user.user_id,
             category: itemCategory,
@@ -219,55 +219,18 @@ router.put("/:id/reject", authenticateToken, async (req, res) => {
   }
 });
 
-// Admin: Update fees
-router.put("/:id/fees", authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const { postal_fee, service_fee, total_amount } = req.body;
-
-  if (postal_fee == null || service_fee == null || total_amount == null) {
-    return res.status(400).json({
-      message: "postal_fee, service_fee, and total_amount are required.",
-    });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("uploads")
-      .update({ postal_fee, service_fee, total_amount })
-      .eq("upload_id", id)
-      .select();
-
-    if (error) {
-      console.error("Error updating fees:", error);
-      return res.status(500).json({ message: "Failed to update fees", error });
-    }
-
-    if (!data?.length) {
-      return res.status(404).json({ message: "Upload not found." });
-    }
-
-    res.status(200).json({
-      message: "Fees updated successfully.",
-      upload: data[0],
-    });
-  } catch (error) {
-    console.error("Update fees error:", error);
-    res.status(500).json({ message: "Server error.", error });
-  }
-});
-
-// Marketplace: (Public view) - Retrieve all approved uploads excluding user's own uploads
+// Marketplace: (Public view) - Retrieve all approved uploads excluding user's own uploads and sold item
 router.get("/", authenticateToken, async (req, res) => {
-  const userId = req.user.user_id; // Get the current user's ID from the request
+  const userId = req.user.user_id;
 
   try {
-    // Add condition to filter out items that are sold, and exclude the current user's uploads
+    // Query to get items that are approved, unsold, and not uploaded by the logged-in user
     const { data: uploads, error } = await supabase
       .from("uploads")
       .select("*")
       .eq("admin_status", "approved")
-      .eq("is_sold", false) // Only fetch items that are not sold
-      .neq("user_id", userId); // Exclude uploads by the current user
+      .neq("user_id", userId) // Exclude the logged-in user's uploads
+      .is("bought_by", null); // Only include items that are unsold (bought_by is null)
 
     if (error) {
       console.error("Error retrieving approved uploads:", error);
@@ -414,143 +377,88 @@ router.put("/:uploadId/like", authenticateToken, async (req, res) => {
   }
 });
 
-// User Dashbord: Users withdraw an upload
-router.put("/:uploadId/withdraw", authenticateToken, async (req, res) => {
+// Marketplace: Mark an item as sold and update bought_by with the buyer's UUID
+router.put("/:uploadId/buy", authenticateToken, async (req, res) => {
   const { uploadId } = req.params;
-  const userId = req.user.user_id;
+  const { buyer_uuid } = req.body; // buyer_uuid is now passed in the request body
 
-  try {
-    const { data, error } = await supabase
-      .from("uploads")
-      .update({ admin_status: "withdrawn" })
-      .eq("upload_id", uploadId)
-      .eq("user_id", userId)
-      .select();
-
-    if (error) {
-      console.error("Error withdrawing upload:", error);
-      return res
-        .status(500)
-        .json({ message: "Failed to withdraw upload.", error });
-    }
-
-    if (!data.length) {
-      return res.status(404).json({ message: "Upload not found." });
-    }
-
-    res.status(200).json({
-      message: "Upload withdrawn successfully.",
-      upload: data[0],
-    });
-  } catch (error) {
-    console.error("Error withdrawing upload:", error);
-    res.status(500).json({ message: "Server error.", error });
+  if (!buyer_uuid) {
+    return res.status(400).json({ message: "Buyer UUID is required." });
   }
-});
-
-// Marketplace: (Public view) when user buys item
-router.put("/:uploadId/sold", authenticateToken, async (req, res) => {
-  const { uploadId } = req.params;
 
   try {
-    console.log("Attempting to mark as sold:", uploadId);
-
-    // Fetch the upload to verify that it exists and has the correct is_sold status
-    const { data: upload, error: fetchError } = await supabase
+    // Fetch the current item details to check if it's already bought
+    const { data: item, error: fetchError } = await supabase
       .from("uploads")
-      .select("upload_id, is_sold, user_id")
+      .select("bought_by")
       .eq("upload_id", uploadId)
       .single();
 
     if (fetchError) {
-      console.error("Error fetching upload:", fetchError);
+      console.error("Error fetching item:", fetchError);
       return res
         .status(500)
-        .json({ message: "Failed to fetch upload", error: fetchError });
+        .json({ message: "Failed to fetch item.", error: fetchError });
     }
 
-    if (!upload) {
-      console.error("Upload not found with uploadId:", uploadId);
-      return res.status(404).json({ message: "Upload not found." });
-    }
-
-    console.log("Upload found:", upload);
-
-    // Ensure the item is not already sold
-    if (upload.is_sold) {
-      console.log("Item is already marked as sold.");
+    // If bought_by already has a value, the item has already been purchased
+    if (item.bought_by) {
       return res
         .status(400)
-        .json({ message: "This item is already marked as sold." });
+        .json({ message: "This item has already been bought." });
     }
 
-    // Ensure the user trying to mark the item as sold is NOT the owner of the item
-    if (upload.user_id === req.user.user_id) {
-      console.log("User cannot buy their own item.");
-      return res.status(400).json({ message: "You cannot buy your own item." });
-    }
-
-    // Proceed with the update
-    const { data, error: updateError } = await supabase
+    // Update the bought_by column with the buyer's UUID and set the bought_at timestamp
+    const { error: updateError } = await supabase
       .from("uploads")
-      .update({ is_sold: true })
-      .eq("upload_id", uploadId)
-      .select();
+      .update({
+        bought_by: buyer_uuid,
+        bought_at: new Date().toISOString(), // Set the bought_at timestamp
+      })
+      .eq("upload_id", uploadId);
 
     if (updateError) {
-      console.error("Error updating upload to mark as sold:", updateError);
-      return res.status(500).json({
-        message: "User cannot buy their own item.",
-        error: updateError,
-      });
-    }
-
-    if (!data || data.length === 0) {
-      console.error("No data returned after the update.");
+      console.error("Error updating item with buyer:", updateError);
       return res
-        .status(404)
-        .json({ message: "Failed to mark upload as sold. Item not found." });
+        .status(500)
+        .json({ message: "Failed to update item.", error: updateError });
     }
 
-    console.log("Upload marked as sold successfully:", data[0]);
-
-    res.status(200).json({
-      message: "Upload marked as sold successfully.",
-      upload: data[0],
-    });
+    res.status(200).json({ message: "Item bought successfully!" });
   } catch (error) {
-    console.error("Error in marking upload as sold:", error);
-    res.status(500).json({ message: "Server error.", error });
+    console.error("Error processing purchase:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while processing purchase.", error });
   }
 });
 
-//Payment
-router.get("/completed", authenticateToken, async (req, res) => {
-  const userId = req.user.user_id;
-
-  console.log("DEBUG: userId received from req.user:", userId); // Add this
+// Marketplace: Retrieve bought items for the authenticated user
+router.get("/customer/bought", authenticateToken, async (req, res) => {
+  const { user_id } = req.user;
 
   try {
-    const { data, error } = await supabase
+    // Fetch items where the 'bought_by' field matches the logged-in user's ID
+    const { data: boughtItems, error } = await supabase
       .from("uploads")
       .select("*")
-      .eq("user_id", userId) // Ensure this is a valid UUID
-      .eq("is_sold", true);
+      .eq("bought_by", user_id); // This checks if the user_id is in the 'bought_by' field
 
     if (error) {
-      console.error("Error fetching completed uploads:", error);
-      return res
-        .status(500)
-        .json({ message: "Error fetching completed uploads", error });
+      console.error("Error retrieving bought uploads:", error);
+      return res.status(500).json({
+        message: "Failed to retrieve bought uploads",
+        error: error,
+      });
     }
 
-    if (data.length === 0) {
-      return res.status(404).json({ message: "No completed uploads found." });
+    if (!boughtItems.length) {
+      return res.status(200).json({ message: "No bought items." });
     }
 
-    return res.status(200).json({ completedItems: data });
+    res.status(200).json({ boughtItems });
   } catch (error) {
-    console.error("Error retrieving completed uploads:", error);
+    console.error("Error retrieving bought items:", error);
     return res.status(500).json({ message: "Server error", error });
   }
 });
