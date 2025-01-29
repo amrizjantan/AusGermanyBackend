@@ -239,5 +239,30 @@ router.put("/:id/decline", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 });
+// Get all accepted orders for a customer
+router.get("/accepted", authenticateToken, async (req, res) => {
+  const { user_id } = req.user;
+
+  try {
+    // Fetch only accepted orders (offer_status = 'accepted')
+    const { data: orders, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("offer_status", "accepted"); // Filter by accepted offers
+
+    if (error) {
+      console.error("Error retrieving accepted orders:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to retrieve accepted orders", error });
+    }
+
+    res.status(200).json({ acceptedOrders: orders });
+  } catch (error) {
+    console.error("Error retrieving accepted orders:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 
 export default router;
