@@ -82,7 +82,16 @@ router.post("/checkout", authenticateToken, async (req, res) => {
       throw new Error("No valid items found for checkout.");
     }
 
-    let customer_email = "";
+    // Retrieve email from request body
+    let customer_email = req.body.email; // Use directly from payload
+
+    // If for some reason it's missing, default to a placeholder
+    if (!customer_email) {
+      customer_email = "fallback@example.com"; // Change this if necessary
+    }
+
+    console.log("Final customer email:", customer_email);
+
     const orderItem = items.find((i) => !i.item_id.startsWith("upload"));
     if (orderItem) {
       const { data: orderEmailData, error: orderEmailError } = await supabase
@@ -108,7 +117,7 @@ router.post("/checkout", authenticateToken, async (req, res) => {
     // Create a Stripe Checkout session with the line items.
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      customer_email,
+      customer_email: customer_email,
       line_items,
       success_url:
         "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
