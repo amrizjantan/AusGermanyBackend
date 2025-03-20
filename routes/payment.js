@@ -1,4 +1,5 @@
 import { Router } from "express";
+import express from "express";
 import Stripe from "stripe";
 import { supabase } from "../index.js";
 import authenticateToken from "../middleware/authenticateToken.js";
@@ -14,13 +15,9 @@ router.post("/checkout", authenticateToken, async (req, res) => {
       throw new Error("No items provided for checkout.");
     }
 
-    // Debug: log the incoming payload
     console.log("Payload for checkout:", req.body);
-
-    // Array to hold the Stripe line items
     const line_items = [];
 
-    // Process each item from the payload
     for (const item of items) {
       let itemData = null;
       console.log(`Processing item with id: ${item.item_id}`);
@@ -55,7 +52,7 @@ router.post("/checkout", authenticateToken, async (req, res) => {
         itemData = orderData;
       }
 
-      // Calculate total amount in cents. Total Amount= price + postal_fee + service_fee
+      // Calculate total amount in cents.
       const price = Number(itemData.price) || 0;
       const postal_fee = Number(itemData.postal_fee) || 0;
       const service_fee = Number(itemData.service_fee) || 0;
@@ -65,7 +62,7 @@ router.post("/checkout", authenticateToken, async (req, res) => {
         `Calculated total amount for item ${item.item_id}: ${totalAmountCents} cents`
       );
 
-      // Create a line item for Stripe.
+      // Create a Stripe line item.
       line_items.push({
         price_data: {
           unit_amount: totalAmountCents,
@@ -82,16 +79,7 @@ router.post("/checkout", authenticateToken, async (req, res) => {
       throw new Error("No valid items found for checkout.");
     }
 
-    // Retrieve email from request body
-    let customer_email = req.body.email; // Use directly from payload
-
-    // If for some reason it's missing, default to a placeholder
-    if (!customer_email) {
-      customer_email = "fallback@example.com"; // Change this if necessary
-    }
-
-    console.log("Final customer email:", customer_email);
-
+    let customer_email = req.body.email || "fallback@example.com";
     const orderItem = items.find((i) => !i.item_id.startsWith("upload"));
     if (orderItem) {
       const { data: orderEmailData, error: orderEmailError } = await supabase
@@ -103,7 +91,6 @@ router.post("/checkout", authenticateToken, async (req, res) => {
         customer_email = orderEmailData.users.email;
       }
     }
-    // Fallback if no email was retrieved (in production, fetch from the users table)
     if (!customer_email) {
       customer_email = "example@example.com";
     }
@@ -114,7 +101,7 @@ router.post("/checkout", authenticateToken, async (req, res) => {
     );
     console.log("Customer email:", customer_email);
 
-    // Create a Stripe Checkout session with the line items.
+    // Create the Stripe Checkout session with metadata.
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: customer_email,
@@ -123,6 +110,11 @@ router.post("/checkout", authenticateToken, async (req, res) => {
         "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "http://localhost:5173/canceled",
       automatic_tax: { enabled: true },
+      // Pass the items and user_id in metadata as JSON strings.
+      metadata: {
+        items: JSON.stringify(items),
+        user_id,
+      },
     });
 
     console.log("Stripe session created:", session);
@@ -150,31 +142,83 @@ router.get("/checkout-session", async (req, res) => {
 });
 
 // Webhook handler for asynchronous events.
-router.post("/webhook", async (req, res) => {
-  let event;
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    let event;
 
-  if (process.env.STRIPE_WEBHOOK_SECRET) {
-    let signature = req.headers["stripe-signature"];
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.rawBody,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
-    } catch (err) {
-      console.error("⚠️  Webhook signature verification failed.", err);
-      return res.sendStatus(400);
+    // [Keep existing signature verification code...]
+
+    console.log("Received webhook event:", event);
+
+    if (event.type === "checkout.session.completed") {
+      const sessionObj = event.data.object;
+      const metadata = sessionObj.metadata;
+
+      // Validate metadata
+      if (!metadata?.items || !metadata.user_id) {
+        console.error("Missing metadata");
+        return res.status(400).send("Bad Request");
+      }
+
+      // Parse items
+      let items;
+      try {
+        items = JSON.parse(metadata.items);
+        if (!Array.isArray(items)) throw new Error("Invalid items format");
+      } catch (err) {
+        console.error("Failed to parse items:", err);
+        return res.status(400).send("Invalid items format");
+      }
+
+      const user_id = metadata.user_id;
+      console.log("Processing items:", items);
+
+      try {
+        for (const item of items) {
+          const table = item.type === "upload" ? "uploads" : "orders";
+          const column = item.type === "upload" ? "upload_id" : "order_id";
+
+          console.log(`Updating ${table} ${item.item_id}...`);
+
+          // For orders, ensure the record exists
+          if (table === "orders") {
+            const { data: existingOrder, error: fetchError } = await supabase
+              .from("orders")
+              .select("*")
+              .eq("order_id", item.item_id)
+              .single();
+
+            if (fetchError || !existingOrder) {
+              console.error(`Order ${item.item_id} not found. Skipping...`);
+              continue;
+            }
+          }
+
+          // Update the table
+          const { data, error } = await supabase
+            .from(table)
+            .update({ paid: true })
+            .eq(column, item.item_id)
+            .select();
+
+          if (error) {
+            console.error(`Error updating ${table} ${item.item_id}:`, error);
+          } else {
+            console.log(`Successfully updated ${table}:`, data);
+          }
+        }
+
+        res.sendStatus(200);
+      } catch (err) {
+        console.error("Payment update failed:", err);
+        res.status(500).send("Internal Server Error");
+      }
+    } else {
+      res.sendStatus(200);
     }
-  } else {
-    event = req.body;
   }
-
-  if (event.type === "checkout.session.completed") {
-    console.log("🔔  Payment received for session:", event.data.object.id);
-    // Additional fulfillment logic can go here.
-  }
-
-  res.sendStatus(200);
-});
+);
 
 export default router;

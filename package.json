@@ -33,13 +33,13 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.15",
     "open-graph-scraper": "^6.8.0",
-    "puppeteer": "^23.1.1",
-    "stripe": "^17.1.0"
+    "puppeteer": "^23.1.1"
   },
   "devDependencies": {
     "@roarr/cli": "^5.12.4",
     "eslint": "^9.10.0",
     "prettier": "^3.3.3",
+    "stripe": "^17.7.0",
     "turbowatch": "^2.29.4"
   }
 }
