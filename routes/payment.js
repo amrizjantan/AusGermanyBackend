@@ -148,10 +148,22 @@ router.post(
   async (req, res) => {
     let event;
 
-    // [Keep existing signature verification code...]
+    const signature = req.headers["stripe-signature"];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    console.log("Received webhook event:", event);
+    try {
+      // Step 1: Verify the webhook signature
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        signature,
+        endpointSecret
+      );
+    } catch (err) {
+      console.error("Webhook error:", err);
+      return res.status(400).send(`Webhook error: ${err.message}`);
+    }
 
+    // Handle only the `checkout.session.completed` event type
     if (event.type === "checkout.session.completed") {
       const sessionObj = event.data.object;
       const metadata = sessionObj.metadata;
@@ -162,7 +174,7 @@ router.post(
         return res.status(400).send("Bad Request");
       }
 
-      // Parse items
+      // Parse items from metadata
       let items;
       try {
         items = JSON.parse(metadata.items);
@@ -196,8 +208,22 @@ router.post(
             }
           }
 
-          // Update the table
-          const { data, error } = await supabase
+          // For uploads, ensure the record exists
+          if (table === "uploads") {
+            const { data: existingUpload, error: fetchError } = await supabase
+              .from("uploads")
+              .select("*")
+              .eq("upload_id", item.item_id)
+              .single();
+
+            if (fetchError || !existingUpload) {
+              console.error(`Upload ${item.item_id} not found. Skipping...`);
+              continue;
+            }
+          }
+
+          // Update the table to mark as paid
+          const { data, error, status } = await supabase
             .from(table)
             .update({ paid: true })
             .eq(column, item.item_id)
@@ -205,8 +231,14 @@ router.post(
 
           if (error) {
             console.error(`Error updating ${table} ${item.item_id}:`, error);
-          } else {
+            return res.status(500).send(`Error updating ${table}`);
+          } else if (status === 200) {
             console.log(`Successfully updated ${table}:`, data);
+          } else {
+            console.error(`Failed with status code: ${status}`);
+            return res
+              .status(500)
+              .send(`Failed to update ${table} with status: ${status}`);
           }
         }
 
@@ -216,6 +248,7 @@ router.post(
         res.status(500).send("Internal Server Error");
       }
     } else {
+      // Handle other event types if necessary
       res.sendStatus(200);
     }
   }
